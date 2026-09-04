@@ -30,9 +30,14 @@ const createImageId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export default function Home() {
+  // アンマウント後に非同期処理の結果をstateへ反映しないためのフラグ
   const mountedRef = useRef(true);
+  // このコンポーネントが生成したImageBitmapを追跡し、削除・クリア・アンマウント時に
+  // close()し忘れてメモリリークするのを防ぐ
   const ownedBitmapsRef = useRef(new Set<ImageBitmap>());
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  // 複数のaddImages呼び出しが並行しても、state更新が呼び出し順どおりに
+  // 行われることを保証するための直列化キュー
   const commitQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [state, dispatch] = useReducer(
     editorReducer,
@@ -51,15 +56,16 @@ export default function Home() {
 
     dispatch({ type: "processing/start" });
 
-    // Reserve this batch's place in the commit order immediately (call order),
-    // before any awaits, so a later-started batch can never commit ahead of it
-    // even if its own validation/decode finishes first.
+    // このバッチのコミット順を、await前(=呼び出し順)の時点で即座に確保する。
+    // こうしないと、後から呼ばれたバッチの検証・デコードが先に終わった場合に
+    // 順序が入れ替わってしまう。
     const previousCommit = commitQueueRef.current;
     let resolveMyTurn!: () => void;
     commitQueueRef.current = new Promise<void>((resolve) => {
       resolveMyTurn = resolve;
     });
 
+    // 署名(拡張子・MIMEタイプ・先頭バイト)を検証し、対応形式のファイルのみ残す
     const validationResults = await Promise.all(
       files.map(async (file) => ({ file, valid: await isSupportedImageFile(file) })),
     );
@@ -69,6 +75,7 @@ export default function Home() {
     const invalidFileNames = validationResults.flatMap(({ file, valid }) =>
       valid ? [] : [file.name],
     );
+    // 1件のデコード失敗が他のファイルを巻き込まないようallSettledを使う
     const results = await Promise.allSettled(
       validFiles.map((file) => Promise.resolve().then(() => createImageBitmap(file))),
     );
@@ -76,8 +83,10 @@ export default function Home() {
       result.status === "rejected" ? [validFiles[index].name] : [],
     );
 
+    // 前のバッチがstateへ反映されるまで待ち、コミット順序を維持する
     await previousCommit;
 
+    // 待機中にアンマウントされていたら、デコード済みビットマップを破棄して終了する
     if (!mountedRef.current) {
       results.forEach((result) => {
         if (result.status === "fulfilled") {
@@ -118,6 +127,7 @@ export default function Home() {
     resolveMyTurn();
   }, []);
 
+  // クリップボード貼り付けの購読、および画像・マウント状態の後始末をまとめて行う
   useEffect(() => {
     const ownedBitmaps = ownedBitmapsRef.current;
     mountedRef.current = true;
@@ -140,11 +150,13 @@ export default function Home() {
     return () => {
       document.removeEventListener("paste", handlePaste);
       mountedRef.current = false;
+      // アンマウント時に保有中の全ビットマップを解放する
       ownedBitmaps.forEach((bitmap) => bitmap.close());
       ownedBitmaps.clear();
     };
   }, [addImages]);
 
+  // 画像一覧・並び方向・隙間・背景色の変更に追従してプレビューを再描画する
   useEffect(() => {
     const canvas = previewCanvasRef.current;
 
@@ -166,6 +178,7 @@ export default function Home() {
       state.direction === "vertical"
         ? calculateVerticalLayout(sizes, state.gap)
         : calculateHorizontalLayout(sizes, state.gap);
+    // 実寸で描画すると重いため、プレビューはPREVIEW_MAX_DIMENSION以下に縮小する
     const scale = computePreviewScale(layout, PREVIEW_MAX_DIMENSION);
     const previewLayout = scaleLayout(layout, scale);
 
@@ -181,6 +194,7 @@ export default function Home() {
     void addImages(files, "file");
   };
 
+  // 一覧から削除する画像のビットマップをここで明示的に解放する
   const handleRemove = (id: string) => {
     const item = state.items.find((candidate) => candidate.id === id);
 
@@ -206,6 +220,7 @@ export default function Home() {
     dispatch({ type: "items/reorder", activeId, overId });
   };
 
+  // ダウンロード用はプレビューと異なり縮小せず、実寸のレイアウトで描画する
   const handleDownload = useCallback(() => {
     if (state.items.length === 0) {
       return;

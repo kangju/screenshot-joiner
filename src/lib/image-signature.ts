@@ -15,6 +15,7 @@ const IMAGE_FORMATS = {
 
 type ImageFormat = keyof typeof IMAGE_FORMATS;
 
+// ファイル名の拡張子から形式を推測する
 const formatFromName = (name: string): ImageFormat | null => {
   const extension = name.split(".").pop()?.toLowerCase();
 
@@ -27,11 +28,14 @@ const formatFromName = (name: string): ImageFormat | null => {
   )?.[0] as ImageFormat | undefined) ?? null;
 };
 
+// FileオブジェクトのMIMEタイプ(ブラウザ判定)から形式を推測する
 const formatFromMimeType = (mimeType: string): ImageFormat | null =>
   (Object.entries(IMAGE_FORMATS).find(([, definition]) =>
     definition.mimeTypes.some((candidate) => candidate === mimeType.toLowerCase()),
   )?.[0] as ImageFormat | undefined) ?? null;
 
+// 先頭バイト列(マジックナンバー)が実際にその形式のものかを検証する。
+// 拡張子やMIMEタイプは偽装可能なため、最終判定はここで行う。
 const matchesSignature = (format: ImageFormat, bytes: Uint8Array): boolean => {
   if (format === "png") {
     const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -54,6 +58,8 @@ const matchesSignature = (format: ImageFormat, bytes: Uint8Array): boolean => {
   );
 };
 
+// 拡張子・MIMEタイプ・先頭バイト署名の3点が一致する場合のみ対応画像とみなす。
+// ファイル全体ではなく先頭12バイトのみ読み込み、大きなファイルでも高速に判定する。
 export const isSupportedImageFile = async (file: File): Promise<boolean> => {
   const nameFormat = formatFromName(file.name);
   const mimeFormat = formatFromMimeType(file.type);

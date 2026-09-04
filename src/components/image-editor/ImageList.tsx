@@ -25,6 +25,8 @@ import styles from "./ImageList.module.css";
 
 const COMPACT_VIEWPORT_QUERY = "(max-width: 760px)";
 
+// 狭い画面(スマホ幅など)かどうかを判定する。狭い画面では並べ替え/削除の
+// 操作ボタンを常時表示せず、編集モードの切り替えで出し分ける。
 const useIsCompactViewport = (): boolean => {
   const [isCompact, setIsCompact] = useState(false);
 
@@ -53,6 +55,8 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder }: ImageListP
   const [isEditing, setIsEditing] = useState(false);
   const showRowControls = !isCompact || isEditing;
 
+  // ポインター操作は誤クリックでドラッグが始まらないよう一定距離の移動を要求し、
+  // タッチ操作はページスクロールと競合しないよう長押し(delay)を要求する
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 5 } }),
@@ -147,6 +151,7 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder }: ImageListP
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
+          // スクリーンリーダー向けにドラッグ操作の状態を都度読み上げさせる
           accessibility={{
             announcements: {
               onDragStart: ({ active }) => `${nameOf(active.id)}のドラッグを開始しました`,

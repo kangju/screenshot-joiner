@@ -14,6 +14,7 @@ type ImageListRowProps = {
   onRemove: (id: string) => void;
 };
 
+// 一覧の1行分。dnd-kitのuseSortableでドラッグ操作を行としてバインドする。
 export function ImageListRow({ item, showControls, onRemove }: ImageListRowProps) {
   const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
     id: item.id,
@@ -22,11 +23,14 @@ export function ImageListRow({ item, showControls, onRemove }: ImageListRowProps
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    // ドラッグ中は半透明にして、元の位置と掴んでいる要素を視覚的に区別する
     opacity: isDragging ? 0.5 : 1,
   };
 
   return (
     <li ref={setNodeRef} style={style} className={styles.row}>
+      {/* 並べ替え用ハンドル。dnd-kitのattributes/listenersをそのまま渡すことで
+          マウス・タッチ・キーボードいずれの操作でもドラッグを開始できる */}
       {showControls && (
         <button
           type="button"

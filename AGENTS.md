@@ -9,6 +9,7 @@ Build a static, client-only business screenshot joiner with Next.js App Router a
 - ZIP extraction runs in a Web Worker; validate signatures and enforce size/count limits.
 - Support 320px-wide touch UI: 44px targets, drag handle, keyboard access, Lucide icons, tooltip and accessible name for icon-only controls.
 - Store crop/rotation/size as metadata until render. Preserve unrelated changes.
+- Write code comments in Japanese. Keep identifiers, string literals, and commit messages in English; only comment text is Japanese.
 
 Read only what the task needs:
 

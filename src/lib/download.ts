@@ -1,3 +1,5 @@
+// Blobを一時的なObjectURLに変換し、非表示リンクのクリックでダウンロードさせる。
+// ダウンロード後は必ずObjectURLを解放してメモリリークを防ぐ。
 export const downloadBlob = (blob: Blob, filename: string): void => {
   const objectUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");

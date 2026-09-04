@@ -1,3 +1,5 @@
+// クロップ範囲(元画像上のピクセル座標)。crop/rotation/targetWidthは
+// 描画されるまで確定値を持たないメタデータとして保持する。
 export type CropRect = {
   x: number;
   y: number;
@@ -8,8 +10,10 @@ export type CropRect = {
 export type ImageItem = {
   id: string;
   name: string;
+  // 画像がどの経路で追加されたか(ファイル選択/クリップボード貼り付け/ZIP展開)
   source: "file" | "paste" | "zip";
   blob: Blob;
+  // デコード済みビットマップ。使い終わったら明示的にclose()して解放する必要がある
   bitmap: ImageBitmap;
   originalWidth: number;
   originalHeight: number;
@@ -32,6 +36,7 @@ export type EditorState = {
   background: string;
   format: "png" | "jpeg";
   jpegQuality: number;
+  // 実行中の非同期処理(画像追加など)の件数。0より大きい間はローディング表示になる
   processing: number;
   error: AppError | null;
 };
@@ -84,6 +89,7 @@ export const editorReducer = (
       const activeIndex = state.items.findIndex((item) => item.id === activeId);
       const overIndex = state.items.findIndex((item) => item.id === overId);
 
+      // ドラッグ元またはドロップ先が既に一覧から消えていた場合は何もしない
       if (activeIndex === -1 || overIndex === -1) {
         return state;
       }
@@ -96,6 +102,7 @@ export const editorReducer = (
     }
     case "processing/start":
       return { ...state, processing: state.processing + 1 };
+    // 多重に走る非同期処理が独立してstart/endするため、カウントは0未満にしない
     case "processing/end":
       return { ...state, processing: Math.max(0, state.processing - 1) };
     default:

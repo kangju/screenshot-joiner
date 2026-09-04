@@ -26,9 +26,7 @@ import styles from "./ImageList.module.css";
 const COMPACT_VIEWPORT_QUERY = "(max-width: 760px)";
 
 const useIsCompactViewport = (): boolean => {
-  const [isCompact, setIsCompact] = useState(
-    () => typeof window !== "undefined" && window.matchMedia(COMPACT_VIEWPORT_QUERY).matches,
-  );
+  const [isCompact, setIsCompact] = useState(false);
 
   useEffect(() => {
     const mediaQueryList = window.matchMedia(COMPACT_VIEWPORT_QUERY);

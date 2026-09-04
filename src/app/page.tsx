@@ -70,7 +70,7 @@ export default function Home() {
       valid ? [] : [file.name],
     );
     const results = await Promise.allSettled(
-      validFiles.map((file) => createImageBitmap(file)),
+      validFiles.map((file) => Promise.resolve().then(() => createImageBitmap(file))),
     );
     const decodeFailureNames = results.flatMap((result, index) =>
       result.status === "rejected" ? [validFiles[index].name] : [],

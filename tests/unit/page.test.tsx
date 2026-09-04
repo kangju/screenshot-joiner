@@ -1177,6 +1177,82 @@ describe("project scaffold", () => {
     }
   });
 
+  it("does not deadlock a later batch when createImageBitmap throws synchronously for one file", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = () =>
+      ({ width: 100, height: 100, close: jest.fn() }) as unknown as ImageBitmap;
+    const goodBitmap = makeBitmap();
+    const secondBatchBitmap = makeBitmap();
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const goodFile = new File([png, "good"], "good.png", { type: "image/png" });
+    const syncThrowFile = new File([png, "bad"], "sync-throw.png", {
+      type: "image/png",
+    });
+    const secondBatchFile = new File([png, "second"], "second-batch.png", {
+      type: "image/png",
+    });
+
+    // Some browsers throw synchronously from createImageBitmap for certain
+    // inputs instead of returning a rejected promise. That synchronous throw
+    // must not escape Promise.allSettled(...) and abort the whole batch, nor
+    // skip the commit-queue handshake that later batches depend on.
+    const createImageBitmapMock = jest.fn<Promise<ImageBitmap>, [ImageBitmapSource]>(
+      (file) => {
+        if (file === syncThrowFile) {
+          throw new Error("synchronous decode failure");
+        }
+        if (file === goodFile) {
+          return Promise.resolve(goodBitmap);
+        }
+        return Promise.resolve(secondBatchBitmap);
+      },
+    );
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+
+      // First batch: one file decodes fine, one throws synchronously inside
+      // the createImageBitmap call used by Promise.allSettled(...map(...)).
+      await user.upload(screen.getByLabelText("画像を追加"), [
+        goodFile,
+        syncThrowFile,
+      ]);
+
+      await waitFor(() =>
+        expect(screen.getByText("good.png")).toBeInTheDocument(),
+      );
+      await waitFor(() =>
+        expect(screen.queryByText("画像を読み込み中です")).not.toBeInTheDocument(),
+      );
+
+      // Second, independent batch. If the first batch's synchronous throw
+      // bypassed resolveMyTurn(), commitQueueRef.current never resolves and
+      // this batch hangs forever awaiting `previousCommit`.
+      await user.upload(screen.getByLabelText("画像を追加"), [secondBatchFile]);
+
+      await waitFor(() =>
+        expect(screen.getByText("second-batch.png")).toBeInTheDocument(),
+      );
+      await waitFor(() =>
+        expect(screen.queryByText("画像を読み込み中です")).not.toBeInTheDocument(),
+      );
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("keeps images in the order their batches were started, even when a later batch finishes first", async () => {
     const user = userEvent.setup();
     const makeBitmap = () =>

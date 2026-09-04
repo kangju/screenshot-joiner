@@ -12,8 +12,11 @@ export const renderJoinedImage = (
   images: CanvasImageSource[],
   background: string,
 ): void => {
-  canvas.width = layout.width;
-  canvas.height = layout.height;
+  const width = Math.round(layout.width);
+  const height = Math.round(layout.height);
+
+  canvas.width = width;
+  canvas.height = height;
 
   const context = canvas.getContext("2d");
 
@@ -22,15 +25,15 @@ export const renderJoinedImage = (
   }
 
   context.fillStyle = background;
-  context.fillRect(0, 0, layout.width, layout.height);
+  context.fillRect(0, 0, width, height);
 
   layout.placements.forEach((placement, index) => {
     context.drawImage(
       images[index],
-      placement.x,
-      placement.y,
-      placement.width,
-      placement.height,
+      Math.round(placement.x),
+      Math.round(placement.y),
+      Math.round(placement.width),
+      Math.round(placement.height),
     );
   });
 };

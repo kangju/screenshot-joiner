@@ -1,6 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
+import { hydrateRoot, type Root } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 
 import { ImageList } from "@/components/image-editor/ImageList";
 import type { ImageItem } from "@/types/editor";
@@ -65,6 +67,54 @@ describe("ImageList", () => {
       expect(screen.queryByRole("button", { name: "編集" })).not.toBeInTheDocument();
     } finally {
       restore();
+    }
+  });
+
+  it("hydrates without a mismatch warning when the real viewport is narrower than the server saw, then syncs to the compact UI", () => {
+    // Simulate the server: it has no real viewport, so matchMedia effectively reports
+    // no match, and the component's deterministic initializer renders non-compact markup.
+    // renderToString (not renderToStaticMarkup) is required here: it emits the text-node
+    // boundary markers hydrateRoot needs, so this test only reports real hydration
+    // mismatches rather than spurious ones caused by unmarked adjacent text nodes.
+    const restoreServerMatchMedia = mockMatchMedia(false);
+    const serverHtml = renderToString(
+      <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+    );
+    restoreServerMatchMedia();
+
+    const container = document.createElement("div");
+    container.innerHTML = serverHtml;
+    document.body.appendChild(container);
+
+    // Now simulate the client: a real narrow viewport, which differs from what the
+    // server-rendered markup assumed. Hydrating against that mismatched markup must not
+    // produce a React hydration warning, since the initial client render is required to
+    // reproduce the deterministic (non-compact) server output before the effect corrects it.
+    const restoreClientMatchMedia = mockMatchMedia(true);
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    let root: Root | undefined;
+
+    try {
+      act(() => {
+        root = hydrateRoot(
+          container,
+          <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+        );
+      });
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+      // The effect still does its job after hydration: the UI syncs to the real
+      // (compact) viewport.
+      expect(within(container).getByRole("button", { name: "編集" })).toBeInTheDocument();
+      expect(within(container).queryByRole("button", { name: "削除: first.png" })).not.toBeInTheDocument();
+    } finally {
+      act(() => {
+        root?.unmount();
+      });
+      container.remove();
+      consoleErrorSpy.mockRestore();
+      restoreClientMatchMedia();
     }
   });
 

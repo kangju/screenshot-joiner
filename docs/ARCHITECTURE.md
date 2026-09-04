@@ -84,7 +84,7 @@ type EditorState = {
   background: string;
   format: "png" | "jpeg";
   jpegQuality: number;
-  processing: boolean;
+  processing: number; // count of in-flight add-image batches; > 0 means loading
   error: AppError | null;
 };
 ```

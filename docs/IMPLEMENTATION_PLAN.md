@@ -17,6 +17,12 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P1-05 Calculate vertical placement with zero gap.
 - P1-06 Calculate horizontal placement with zero gap.
 - P1-07 Render and download a PNG.
+- P1-08 Drag-and-drop image files onto the image list.
+- P1-09 Remove an individual image.
+- P1-10 Clear all images.
+- P1-11 Scale a layout for a downscaled live preview.
+- P1-12 Show a live preview that updates as items change.
+- P1-13 Choose join direction and reflect it in the live preview and download.
 
 ## Phase 2 — Reordering and responsive controls
 
@@ -25,7 +31,7 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P2-03 Reorder through keyboard controls.
 - P2-04 Auto-scroll a long list during drag.
 - P2-05 Provide accessible icon buttons and tooltips.
-- P2-06 Switch desktop row actions to the mobile overflow menu at the responsive boundary.
+- P2-06 Hide row reorder/delete controls on narrow viewports behind an edit-mode toggle.
 
 ## Phase 3 — Transformations
 

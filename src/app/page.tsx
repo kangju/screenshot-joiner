@@ -298,7 +298,10 @@ export default function Home() {
         ? calculateVerticalLayout(sizes, state.gap)
         : calculateHorizontalLayout(sizes, state.gap);
 
-    return { width: layout.width, height: layout.height };
+    // renderJoinedImageが実際にキャンバスを確保する際の丸め(Math.round)と
+    // 一致させる。ここで丸めないと、小数を含むレイアウトで表示上の出力サイズが
+    // 実際に生成されるPNG/JPEGの寸法とずれてしまう
+    return { width: Math.round(layout.width), height: Math.round(layout.height) };
   }, [state.items, state.sizeMode, state.customSize, state.direction, state.gap]);
 
   // 画像一覧・並び方向・隙間・背景色・サイズモードの変更に追従してプレビューを再描画する

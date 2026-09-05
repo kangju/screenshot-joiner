@@ -48,7 +48,7 @@ jest.mock("@/lib/clipboard", () => ({
 // zip-clientは実際のWorkerランタイムに依存しておりjsdomでは動作しないため、
 // モジュール自体をモックしてpage.tsx側の配線(進捗表示・完了・エラー・
 // キャンセル)だけを検証する。Worker生成やpostMessage転送自体は
-// tests/unit/zip-client.test.tsxと、別途のブラウザ確認で検証済み。
+// tests/unit/zip-client.test.tsと、別途のブラウザ確認で検証済み。
 const extractZipFileMock = jest.fn();
 
 jest.mock("@/lib/zip-client", () => ({

@@ -28,4 +28,18 @@ describe("compareNatural", () => {
 
     expect([...names].sort(compareNatural)).toEqual(["img2.png", "img009.png", "img10.png"]);
   });
+
+  it("breaks ties deterministically when numeric runs are equal in value but differ in padding", () => {
+    // "9"と"009"は数値としては等しいため、これだけでは順序が決まらない。
+    // 桁数によるタイブレークがないと、入力順(ZIPの格納順など)に依存した
+    // 非決定的な並びになってしまう。
+    expect(compareNatural("img9.png", "img009.png")).not.toBe(0);
+    expect(compareNatural("img9.png", "img009.png")).toBe(
+      -compareNatural("img009.png", "img9.png"),
+    );
+    expect([...["img009.png", "img9.png"]].sort(compareNatural)).toEqual([
+      "img9.png",
+      "img009.png",
+    ]);
+  });
 });

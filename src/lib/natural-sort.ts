@@ -27,6 +27,13 @@ export const compareNatural = (a: string, b: string): number => {
         return diff;
       }
 
+      // 数値としては等しいがゼロ埋めなどで桁数が異なる場合(例: "9"と"009")、
+      // 桁数の少ない方を先にするタイブレークを行う。これがないと、入力順
+      // (ZIPの格納順など)に依存した非決定的な並びになってしまう
+      if (runA.length !== runB.length) {
+        return runA.length - runB.length;
+      }
+
       continue;
     }
 

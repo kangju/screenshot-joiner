@@ -37,6 +37,52 @@ jest.mock("@dnd-kit/sortable", () => {
   };
 });
 
+// クリップボードコピーの成功/失敗/非対応を明示的に切り替えて検証するため、
+// tests/unit/clipboard.test.tsで既に検証済みの実装をモックに差し替える
+const copyPngBlobToClipboardMock = jest.fn();
+
+jest.mock("@/lib/clipboard", () => ({
+  copyPngBlobToClipboard: (...args: unknown[]) => copyPngBlobToClipboardMock(...args),
+}));
+
+// zip-clientは実際のWorkerランタイムに依存しておりjsdomでは動作しないため、
+// モジュール自体をモックしてpage.tsx側の配線(進捗表示・完了・エラー・
+// キャンセル)だけを検証する。Worker生成やpostMessage転送自体は
+// tests/unit/zip-client.test.tsxと、別途のブラウザ確認で検証済み。
+const extractZipFileMock = jest.fn();
+
+jest.mock("@/lib/zip-client", () => ({
+  extractZipFile: (...args: unknown[]) => extractZipFileMock(...args),
+}));
+
+// cropperjsは実際のポインタージオメトリに依存しておりjsdomでは動作しないため、
+// tests/unit/crop-dialog.test.tsxと同じ最小限のフェイクに差し替える
+let lastCropperInstance: { destroy: jest.Mock } | null = null;
+
+jest.mock("cropperjs", () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => {
+      const instance = {
+        getCropperSelection: () => ({
+          x: 1,
+          y: 2,
+          width: 3,
+          height: 4,
+          keyboard: false,
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+        }),
+        getCropperImage: () => ({ scalable: true, translatable: true, rotatable: true, skewable: true }),
+        getCropperCanvas: () => ({ style: {} }),
+        destroy: jest.fn(),
+      };
+      lastCropperInstance = instance;
+      return instance;
+    }),
+  };
+});
+
 const expectListItemNames = (names: string[]) => {
   const items = screen.getAllByRole("listitem");
   expect(items).toHaveLength(names.length);
@@ -49,6 +95,8 @@ type MockCanvasContext = {
   fillStyle: string;
   fillRect: jest.Mock;
   drawImage: jest.Mock;
+  translate: jest.Mock;
+  rotate: jest.Mock;
 };
 
 describe("project scaffold", () => {
@@ -65,6 +113,8 @@ describe("project scaffold", () => {
   };
 
   beforeEach(() => {
+    extractZipFileMock.mockReset();
+    copyPngBlobToClipboardMock.mockReset();
     canvasContexts = [];
     jest
       .spyOn(HTMLCanvasElement.prototype, "getContext")
@@ -74,7 +124,13 @@ describe("project scaffold", () => {
         if (!entry) {
           entry = {
             canvas: this,
-            context: { fillStyle: "", fillRect: jest.fn(), drawImage: jest.fn() },
+            context: {
+              fillStyle: "",
+              fillRect: jest.fn(),
+              drawImage: jest.fn(),
+              translate: jest.fn(),
+              rotate: jest.fn(),
+            },
           };
           canvasContexts.push(entry);
         }
@@ -790,6 +846,248 @@ describe("project scaffold", () => {
     }
   });
 
+  it("rejects a ZIP file whose own size exceeds the archive limit without reading it into memory (P4-05 archive-size check)", async () => {
+    render(<Home />);
+    const zipFile = new File([new Uint8Array([1, 2, 3])], "huge.zip", { type: "application/zip" });
+    Object.defineProperty(zipFile, "size", { value: 200 * 1024 * 1024 + 1 });
+    const arrayBufferSpy = jest.spyOn(zipFile, "arrayBuffer");
+    const list = screen.getByRole("list");
+
+    fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("huge.zip");
+    expect(screen.getByRole("alert")).toHaveTextContent("ZIPファイル自体が大きすぎます");
+    expect(arrayBufferSpy).not.toHaveBeenCalled();
+    expect(extractZipFileMock).not.toHaveBeenCalled();
+  });
+
+  it("processes two dropped ZIP files one at a time, without one's status/cancel overwriting the other's", async () => {
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    let resolveFirst!: (outcome: unknown) => void;
+    let resolveSecond!: (outcome: unknown) => void;
+    const firstPromise = new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+    const secondPromise = new Promise((resolve) => {
+      resolveSecond = resolve;
+    });
+    extractZipFileMock
+      .mockReturnValueOnce({ result: firstPromise, cancel: jest.fn() })
+      .mockReturnValueOnce({ result: secondPromise, cancel: jest.fn() });
+
+    try {
+      render(<Home />);
+      const firstZip = new File([new Uint8Array([1])], "first.zip", { type: "application/zip" });
+      const secondZip = new File([new Uint8Array([2])], "second.zip", { type: "application/zip" });
+      const list = screen.getByRole("list");
+
+      fireEvent.drop(list, { dataTransfer: { files: [firstZip, secondZip] } });
+
+      // 1件目が完了するまで、2件目のextractZipFileはまだ呼ばれない(直列処理)
+      await waitFor(() => expect(extractZipFileMock).toHaveBeenCalledTimes(1));
+      expect(extractZipFileMock).toHaveBeenCalledWith(expect.anything(), expect.any(Function));
+
+      resolveFirst({ ok: true, files: [{ name: "a.png", data: new Uint8Array(pngSignature) }] });
+      await screen.findByText("a.png");
+
+      // 1件目の完了後にようやく2件目が始まる
+      await waitFor(() => expect(extractZipFileMock).toHaveBeenCalledTimes(2));
+
+      resolveSecond({ ok: true, files: [{ name: "b.png", data: new Uint8Array(pngSignature) }] });
+      await screen.findByText("b.png");
+
+      expect(screen.getByText("a.png")).toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("extracts a dropped ZIP file through the worker client and adds the resulting images", async () => {
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    extractZipFileMock.mockReturnValue({
+      result: Promise.resolve({
+        ok: true,
+        files: [
+          { name: "img2.png", data: new Uint8Array(pngSignature) },
+          { name: "img10.png", data: new Uint8Array(pngSignature) },
+        ],
+      }),
+      cancel: jest.fn(),
+    });
+
+    try {
+      render(<Home />);
+      const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", {
+        type: "application/zip",
+      });
+      const list = screen.getByRole("list");
+
+      fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+
+      expect(await screen.findByText("img2.png")).toBeInTheDocument();
+      expect(screen.getByText("img10.png")).toBeInTheDocument();
+      expect(extractZipFileMock).toHaveBeenCalledTimes(1);
+      expect(createImageBitmapMock).toHaveBeenCalledTimes(2);
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("closes the bitmaps of ZIP-extracted images on delete and clear, same as regular uploads (P5-05 cleanup audit)", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = () => ({ width: 100, height: 100, close: jest.fn() }) as unknown as ImageBitmap;
+    const firstBitmap = makeBitmap();
+    const secondBitmap = makeBitmap();
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    extractZipFileMock.mockReturnValue({
+      result: Promise.resolve({
+        ok: true,
+        files: [
+          { name: "img2.png", data: new Uint8Array(pngSignature) },
+          { name: "img10.png", data: new Uint8Array(pngSignature) },
+        ],
+      }),
+      cancel: jest.fn(),
+    });
+
+    try {
+      render(<Home />);
+      const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", {
+        type: "application/zip",
+      });
+      const list = screen.getByRole("list");
+
+      fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+      await screen.findByText("img10.png");
+
+      await user.click(screen.getByRole("button", { name: "削除: img2.png" }));
+      expect(firstBitmap.close).toHaveBeenCalledTimes(1);
+      expect(secondBitmap.close).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: "すべて削除" }));
+      expect(secondBitmap.close).toHaveBeenCalledTimes(1);
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("shows extraction progress and a cancel control while a ZIP is being processed, then clears it when cancelled", async () => {
+    const user = userEvent.setup();
+    let capturedOnProgress: ((stage: "scanning" | "extracting") => void) | undefined;
+    const cancelMock = jest.fn();
+    let resolveResult!: (outcome: { ok: false; reason: "cancelled" }) => void;
+    const resultPromise = new Promise<{ ok: false; reason: "cancelled" }>((resolve) => {
+      resolveResult = resolve;
+    });
+    extractZipFileMock.mockImplementation((_buffer: ArrayBuffer, onProgress: typeof capturedOnProgress) => {
+      capturedOnProgress = onProgress;
+      return { result: resultPromise, cancel: cancelMock };
+    });
+
+    render(<Home />);
+    const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", {
+      type: "application/zip",
+    });
+    const list = screen.getByRole("list");
+
+    fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+
+    await waitFor(() => expect(capturedOnProgress).toBeDefined());
+    act(() => capturedOnProgress?.("scanning"));
+    expect(await screen.findByText("ZIPを確認中です")).toBeInTheDocument();
+
+    act(() => capturedOnProgress?.("extracting"));
+    expect(await screen.findByText("ZIPを展開中です")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "キャンセル" }));
+    expect(cancelMock).toHaveBeenCalledTimes(1);
+
+    act(() => resolveResult({ ok: false, reason: "cancelled" }));
+    await waitFor(() => expect(screen.queryByText("ZIPを展開中です")).not.toBeInTheDocument());
+  });
+
+  it("cancels an in-flight ZIP extraction's worker when the editor unmounts (not just suppressing the result)", async () => {
+    const cancelMock = jest.fn();
+    const pendingResult = new Promise(() => undefined); // never resolves
+    extractZipFileMock.mockReturnValue({ result: pendingResult, cancel: cancelMock });
+
+    const { unmount } = render(<Home />);
+    const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", { type: "application/zip" });
+    const list = screen.getByRole("list");
+
+    fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+    await waitFor(() => expect(extractZipFileMock).toHaveBeenCalledTimes(1));
+
+    expect(cancelMock).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(cancelMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a ZIP extraction failure without adding any images", async () => {
+    extractZipFileMock.mockReturnValue({
+      result: Promise.resolve({ ok: false, reason: "tooManyFiles" }),
+      cancel: jest.fn(),
+    });
+
+    render(<Home />);
+    const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", {
+      type: "application/zip",
+    });
+    const list = screen.getByRole("list");
+
+    fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("photos.zip");
+    expect(extractZipFileMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /削除:/ })).not.toBeInTheDocument();
+  });
+
   it("prevents the browser's default file-open behavior while dragging over the image list", () => {
     render(<Home />);
     const list = screen.getByRole("list");
@@ -890,6 +1188,54 @@ describe("project scaffold", () => {
     }
   });
 
+  it("opens the crop dialog from the row button and closes it on cancel, confirm, and reset", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      // キャンセル: ダイアログが閉じる
+      await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
+      expect(screen.getByRole("dialog", { name: "トリミング: first.png" })).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "キャンセル" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      // 決定: ダイアログが閉じる
+      lastCropperInstance = null;
+      await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
+      // cropperjsは動的importで読み込むため、インスタンス化がマイクロタスク1回分遅れる
+      await waitFor(() => expect(lastCropperInstance).not.toBeNull());
+      await user.click(screen.getByRole("button", { name: "決定" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      // リセット: ダイアログが閉じる
+      await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
+      await user.click(screen.getByRole("button", { name: "リセット" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("renders a downscaled live preview that updates as images are added", async () => {
     const user = userEvent.setup();
     const makeBitmap = (width: number, height: number) =>
@@ -925,6 +1271,110 @@ describe("project scaffold", () => {
       expect(context.fillRect).toHaveBeenCalledWith(0, 0, 480, 450);
       expect(context.drawImage).toHaveBeenNthCalledWith(1, firstBitmap, 0, 0, 480, 270);
       expect(context.drawImage).toHaveBeenNthCalledWith(2, secondBitmap, 0, 270, 480, 180);
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("swaps the effective dimensions in the live preview after rotating an image 90 degrees", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 640, height: 360, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      const preview = await screen.findByRole("img", { name: "結合プレビュー" });
+      const context = getMockContext(preview as HTMLCanvasElement);
+
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(1));
+      // 回転前: 640x360 (長辺640)を0.75倍に縮小 -> 480x270
+      expect(preview).toHaveAttribute("width", "480");
+      expect(preview).toHaveAttribute("height", "270");
+      expect(context.drawImage).toHaveBeenNthCalledWith(1, bitmap, 0, 0, 480, 270);
+
+      await user.click(screen.getByRole("button", { name: "回転: first.png" }));
+
+      // 回転後: 実効サイズが360x640に入れ替わり、同じ0.75倍で270x480になる
+      await waitFor(() => expect(preview).toHaveAttribute("width", "270"));
+      expect(preview).toHaveAttribute("height", "480");
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
+      // クロップ/回転された画像は元のビットマップではなく、変換済みの中間canvasから描画される
+      expect(context.drawImage).toHaveBeenNthCalledWith(2, expect.any(HTMLCanvasElement), 0, 0, 270, 480);
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("keeps consistent relative proportions in the preview between a rotated image and an untransformed one (regression: 180-degree rotation must not change apparent size)", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = () => ({ width: 1200, height: 800, close: jest.fn() }) as unknown as ImageBitmap;
+    const firstBitmap = makeBitmap();
+    const secondBitmap = makeBitmap();
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "first"], "first.png", { type: "image/png" }),
+        new File([png, "second"], "second.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("second.png");
+
+      const preview = await screen.findByRole("img", { name: "結合プレビュー" });
+      const context = getMockContext(preview as HTMLCanvasElement);
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
+
+      // 2枚目だけ180度回転する(寸法は変わらないはず)。回転を1回クリックする
+      // たびにプレビューが再描画されるため、2回のクリックで6回描画されている
+      await user.click(screen.getByRole("button", { name: "回転: second.png" }));
+      await user.click(screen.getByRole("button", { name: "回転: second.png" }));
+
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(6));
+      const lastCallIndex = context.drawImage.mock.calls.length - 1;
+      const firstPlacement = context.drawImage.mock.calls[lastCallIndex - 1];
+      const secondPlacement = context.drawImage.mock.calls[lastCallIndex];
+
+      // 180度回転しても寸法は変わらないため、2枚は同じ大きさで並ぶはず
+      expect([firstPlacement[3], firstPlacement[4]]).toEqual([secondPlacement[3], secondPlacement[4]]);
+      // 1200x800を縦に2枚(合計1200x1600)、長辺1600を480に収める0.3倍 -> 360x240
+      expect(firstPlacement.slice(3)).toEqual([360, 240]);
+      expect(secondPlacement.slice(3)).toEqual([360, 240]);
     } finally {
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {
@@ -992,6 +1442,222 @@ describe("project scaffold", () => {
       ]);
       expect(horizontalButton).toHaveAttribute("aria-pressed", "true");
       expect(verticalButton).toHaveAttribute("aria-pressed", "false");
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("defaults to the original size mode and shows the current output dimensions", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = (width: number, height: number) =>
+      ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
+    const firstBitmap = makeBitmap(200, 150);
+    const secondBitmap = makeBitmap(100, 50);
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "first"], "first.png", { type: "image/png" }),
+        new File([png, "second"], "second.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("second.png");
+
+      expect(screen.getByRole("button", { name: "原寸" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "幅揃え" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "高さ揃え" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "カスタム" })).toHaveAttribute("aria-pressed", "false");
+
+      // 原寸: 200x150を縦に積み、100x50をそのまま積んだ幅200・高さ200
+      await waitFor(() =>
+        expect(screen.getByText("出力サイズ: 200 × 200px(40,000px)")).toBeInTheDocument(),
+      );
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("fits every image to the first image's width when fit-width is selected", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = (width: number, height: number) =>
+      ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
+    const firstBitmap = makeBitmap(200, 150);
+    const secondBitmap = makeBitmap(100, 50);
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "first"], "first.png", { type: "image/png" }),
+        new File([png, "second"], "second.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("second.png");
+
+      const preview = await screen.findByRole("img", { name: "結合プレビュー" });
+      const context = getMockContext(preview as HTMLCanvasElement);
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
+
+      await user.click(screen.getByRole("button", { name: "幅揃え" }));
+
+      // 幅揃え: 100x50は最初の画像の幅200に合わせて200x100へ拡大される
+      // -> 200x150 + 200x100 を縦に積んで幅200・高さ250(480以下なので等倍)
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(4));
+      expect(preview).toHaveAttribute("width", "200");
+      expect(preview).toHaveAttribute("height", "250");
+      const lastCallIndex = context.drawImage.mock.calls.length - 1;
+      expect(context.drawImage.mock.calls[lastCallIndex - 1]).toEqual([firstBitmap, 0, 0, 200, 150]);
+      expect(context.drawImage.mock.calls[lastCallIndex]).toEqual([secondBitmap, 0, 150, 200, 100]);
+      await waitFor(() =>
+        expect(screen.getByText("出力サイズ: 200 × 250px(50,000px)")).toBeInTheDocument(),
+      );
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("fits every image to a user-entered custom width", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = (width: number, height: number) =>
+      ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
+    const firstBitmap = makeBitmap(200, 150);
+    const secondBitmap = makeBitmap(100, 50);
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "first"], "first.png", { type: "image/png" }),
+        new File([png, "second"], "second.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("second.png");
+
+      const preview = await screen.findByRole("img", { name: "結合プレビュー" });
+      const context = getMockContext(preview as HTMLCanvasElement);
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
+
+      await user.click(screen.getByRole("button", { name: "カスタム" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "300");
+
+      // カスタム(縦結合なので幅300指定): 200x150 -> 300x225, 100x50 -> 300x150
+      // 合計 幅300・高さ375(480以下なので等倍)
+      await waitFor(() =>
+        expect(screen.getByText("出力サイズ: 300 × 375px(112,500px)")).toBeInTheDocument(),
+      );
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("applies a user-entered gap and background color to the live preview", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = (width: number, height: number) =>
+      ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
+    const firstBitmap = makeBitmap(200, 100);
+    const secondBitmap = makeBitmap(200, 100);
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "first"], "first.png", { type: "image/png" }),
+        new File([png, "second"], "second.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("second.png");
+
+      const preview = await screen.findByRole("img", { name: "結合プレビュー" });
+      const context = getMockContext(preview as HTMLCanvasElement);
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
+      expect(preview).toHaveAttribute("height", "200");
+
+      const gapInput = screen.getByLabelText("画像間隔(px)");
+      expect(gapInput).toHaveValue(0);
+      await user.clear(gapInput);
+      await user.type(gapInput, "50");
+
+      // 隙間50pxが加わり、合計高さが200から250になる
+      await waitFor(() => expect(preview).toHaveAttribute("height", "250"));
+
+      const backgroundInput = screen.getByLabelText("背景色");
+      expect(backgroundInput).toHaveValue("#ffffff");
+      // userEventはtype="color"の実際のカラーピッカー操作を模倣できないため、
+      // 他のフォーム操作と同じchangeイベントの発火で値の変更を再現する
+      fireEvent.change(backgroundInput, { target: { value: "#112233" } });
+
+      await waitFor(() => expect(context.fillStyle).toBe("#112233"));
     } finally {
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {
@@ -1325,10 +1991,226 @@ describe("project scaffold", () => {
     }
   });
 
-  it("disables downloading until at least one image is added", () => {
+  it("warns before allocating an output canvas above the pixel threshold, and cancels if not confirmed", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 11000, height: 10000, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest.spyOn(HTMLCanvasElement.prototype, "toBlob");
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "huge.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("huge.png");
+
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(toBlobSpy).not.toHaveBeenCalled();
+    } finally {
+      confirmSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("proceeds with the download above the pixel threshold once the user confirms", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 11000, height: 10000, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const blob = new Blob(["png-bytes"], { type: "image/png" });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(blob));
+    const createObjectURLMock = jest.fn(() => "blob:mock-url");
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURLMock });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: jest.fn() });
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "huge.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("huge.png");
+
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(toBlobSpy).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      confirmSpy.mockRestore();
+      clickSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("copies the joined PNG to the clipboard when supported", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const blob = new Blob(["png-bytes"], { type: "image/png" });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(blob));
+    copyPngBlobToClipboardMock.mockResolvedValue("copied");
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      await user.click(screen.getByRole("button", { name: "PNGとしてコピー" }));
+
+      expect(copyPngBlobToClipboardMock).toHaveBeenCalledWith(blob);
+      expect(await screen.findByText("クリップボードにコピーしました")).toBeInTheDocument();
+    } finally {
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("falls back to downloading a PNG when clipboard copying is unavailable", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const blob = new Blob(["png-bytes"], { type: "image/png" });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(blob));
+    const createObjectURLMock = jest.fn(() => "blob:mock-url");
+    const revokeObjectURLMock = jest.fn();
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURLMock });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURLMock });
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    copyPngBlobToClipboardMock.mockResolvedValue("unsupported");
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      await user.click(screen.getByRole("button", { name: "PNGとしてコピー" }));
+
+      expect(await screen.findByText("クリップボードにコピーできなかったため、PNGとしてダウンロードしました")).toBeInTheDocument();
+      expect(createObjectURLMock).toHaveBeenCalledWith(blob);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      clickSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("checks the pixel-count threshold from metadata before allocating the crop/rotate transform canvas (regression: warning must come first)", async () => {
+    const user = userEvent.setup();
+    // 回転を伴う巨大画像。crop/rotationが設定されているとgetRenderSourceが
+    // 変換用の中間canvasを確保・描画する(通常経路とは別の重い処理)
+    const bitmap = { width: 11000, height: 10000, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "huge.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("huge.png");
+      await user.click(screen.getByRole("button", { name: "回転: huge.png" }));
+      await waitFor(() => expect(confirmSpy).not.toHaveBeenCalled());
+
+      const canvasCountBeforeDownload = canvasContexts.length;
+
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      // キャンセルした場合、変換用の中間canvasも出力用canvasも一切確保されない
+      expect(canvasContexts.length).toBe(canvasCountBeforeDownload);
+    } finally {
+      confirmSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("disables downloading and copying until at least one image is added", () => {
     render(<Home />);
 
     expect(screen.getByRole("button", { name: "PNGとして保存" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "PNGとしてコピー" })).toBeDisabled();
   });
 
   it("joins added images vertically onto a canvas and downloads the result as a PNG", async () => {
@@ -1415,6 +2297,58 @@ describe("project scaffold", () => {
     }
   });
 
+  it("switches to JPEG export and downloads with the selected quality and a .jpg filename", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const blob = new Blob(["jpeg-bytes"], { type: "image/jpeg" });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(blob));
+    const createObjectURLMock = jest.fn(() => "blob:mock-url");
+    const revokeObjectURLMock = jest.fn();
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURLMock });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURLMock });
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      await user.click(screen.getByRole("button", { name: "JPEG" }));
+
+      const qualityInput = screen.getByLabelText("JPEG品質");
+      await user.clear(qualityInput);
+      await user.type(qualityInput, "0.5");
+
+      const downloadButton = screen.getByRole("button", { name: "JPEGとして保存" });
+      await user.click(downloadButton);
+
+      expect(toBlobSpy).toHaveBeenCalledWith(expect.any(Function), "image/jpeg", 0.5);
+      expect(createObjectURLMock).toHaveBeenCalled();
+    } finally {
+      clickSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("does not send or remotely load user data while rendering", () => {
     const originalFetch = globalThis.fetch;
     const originalSendBeacon = navigator.sendBeacon;
@@ -1480,6 +2414,87 @@ describe("project scaffold", () => {
         });
       } else {
         Reflect.deleteProperty(navigator, "sendBeacon");
+      }
+    }
+  });
+
+  it("does not send or remotely load user data through cropping, ZIP extraction, or clipboard copy (P6-04)", async () => {
+    const user = userEvent.setup();
+    const originalFetch = globalThis.fetch;
+    const originalSendBeacon = navigator.sendBeacon;
+    const fetchSpy = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();
+    const sendBeaconSpy = jest.fn<
+      ReturnType<Navigator["sendBeacon"]>,
+      Parameters<Navigator["sendBeacon"]>
+    >(() => false);
+    Object.defineProperty(globalThis, "fetch", { configurable: true, value: fetchSpy });
+    Object.defineProperty(navigator, "sendBeacon", { configurable: true, value: sendBeaconSpy });
+    const xhrOpenSpy = jest.spyOn(XMLHttpRequest.prototype, "open").mockImplementation(() => undefined);
+    const xhrSendSpy = jest.spyOn(XMLHttpRequest.prototype, "send").mockImplementation(() => undefined);
+
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    extractZipFileMock.mockReturnValue({
+      result: Promise.resolve({ ok: true, files: [{ name: "z.png", data: new Uint8Array(pngSignature) }] }),
+      cancel: jest.fn(),
+    });
+    copyPngBlobToClipboardMock.mockResolvedValue("copied");
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(new Blob(["x"], { type: "image/png" })));
+
+    try {
+      render(<Home />);
+      const file = new File([new Uint8Array(pngSignature)], "first.png", { type: "image/png" });
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      // クロップ: 開いて決定
+      await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "決定" })).toBeInTheDocument());
+      await user.click(screen.getByRole("button", { name: "決定" }));
+
+      // ZIP展開
+      const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", { type: "application/zip" });
+      fireEvent.drop(screen.getByRole("list"), { dataTransfer: { files: [zipFile] } });
+      await screen.findByText("z.png");
+
+      // クリップボードコピー
+      await user.click(screen.getByRole("button", { name: "PNGとしてコピー" }));
+      await screen.findByText("クリップボードにコピーしました");
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(xhrOpenSpy).not.toHaveBeenCalled();
+      expect(xhrSendSpy).not.toHaveBeenCalled();
+      expect(sendBeaconSpy).not.toHaveBeenCalled();
+    } finally {
+      toBlobSpy.mockRestore();
+      fetchSpy.mockRestore();
+      xhrOpenSpy.mockRestore();
+      xhrSendSpy.mockRestore();
+      if (originalFetch) {
+        Object.defineProperty(globalThis, "fetch", { configurable: true, value: originalFetch });
+      } else {
+        Reflect.deleteProperty(globalThis, "fetch");
+      }
+      if (originalSendBeacon) {
+        Object.defineProperty(navigator, "sendBeacon", { configurable: true, value: originalSendBeacon });
+      } else {
+        Reflect.deleteProperty(navigator, "sendBeacon");
+      }
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
       }
     }
   });

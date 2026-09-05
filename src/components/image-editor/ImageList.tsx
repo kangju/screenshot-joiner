@@ -47,9 +47,11 @@ type ImageListProps = {
   onAddFiles: (files: File[]) => void;
   onRemove: (id: string) => void;
   onReorder: (activeId: string, overId: string) => void;
+  onRotate: (id: string) => void;
+  onCrop: (id: string) => void;
 };
 
-export function ImageList({ items, onAddFiles, onRemove, onReorder }: ImageListProps) {
+export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, onCrop }: ImageListProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isCompact = useIsCompactViewport();
   const [isEditing, setIsEditing] = useState(false);
@@ -129,7 +131,7 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder }: ImageListP
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,application/zip,.zip"
         aria-label="画像を追加"
         className="visually-hidden"
         onChange={handleFileChange}
@@ -140,7 +142,7 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder }: ImageListP
             <span className={styles.emptyIcon} aria-hidden="true">
               <ImageIcon size={20} />
             </span>
-            <p className={styles.emptyTitle}>この一覧に画像をドラッグ&ドロップ</p>
+            <p className={styles.emptyTitle}>この一覧に画像またはZIPをドラッグ&ドロップ</p>
             <p className={styles.emptyHint}>
               またはページ上で <kbd className={styles.kbd}>Ctrl+V</kbd>(Mac: <kbd className={styles.kbd}>Cmd+V</kbd>)で貼り付け
             </p>
@@ -175,6 +177,8 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder }: ImageListP
                   item={item}
                   showControls={showRowControls}
                   onRemove={onRemove}
+                  onRotate={onRotate}
+                  onCrop={onCrop}
                 />
               ))}
             </ul>

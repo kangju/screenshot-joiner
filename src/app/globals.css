@@ -10,7 +10,8 @@
   --color-border-strong: #c7cbd6;
   --color-text: #171a21;
   --color-text-muted: #5b616e;
-  --color-text-faint: #8b90a0;
+  /* #f8f9fb背景に対して4.5:1(WCAG AA)を満たす値。#8b90a0は3.02で未達だった */
+  --color-text-faint: #6b7280;
   --color-accent: oklch(52% 0.19 290);
   --color-accent-contrast: #ffffff;
   --color-accent-soft: oklch(93% 0.035 290);

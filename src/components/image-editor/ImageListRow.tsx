@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Crop, GripVertical, Image as ImageIcon, RotateCw, Trash2 } from "lucide-react";
 
 import type { ImageItem } from "@/types/editor";
 
@@ -12,10 +12,12 @@ type ImageListRowProps = {
   item: ImageItem;
   showControls: boolean;
   onRemove: (id: string) => void;
+  onRotate: (id: string) => void;
+  onCrop: (id: string) => void;
 };
 
 // 一覧の1行分。dnd-kitのuseSortableでドラッグ操作を行としてバインドする。
-export function ImageListRow({ item, showControls, onRemove }: ImageListRowProps) {
+export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }: ImageListRowProps) {
   const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
     id: item.id,
   });
@@ -47,6 +49,28 @@ export function ImageListRow({ item, showControls, onRemove }: ImageListRowProps
         <ImageIcon size={16} />
       </span>
       <span className={styles.name}>{item.name}</span>
+      {showControls && (
+        <button
+          type="button"
+          className={styles.rowRotate}
+          aria-label={`回転: ${item.name}`}
+          title="回転"
+          onClick={() => onRotate(item.id)}
+        >
+          <RotateCw size={16} aria-hidden="true" />
+        </button>
+      )}
+      {showControls && (
+        <button
+          type="button"
+          className={styles.rowCrop}
+          aria-label={`トリミング: ${item.name}`}
+          title="トリミング"
+          onClick={() => onCrop(item.id)}
+        >
+          <Crop size={16} aria-hidden="true" />
+        </button>
+      )}
       {showControls && (
         <button
           type="button"

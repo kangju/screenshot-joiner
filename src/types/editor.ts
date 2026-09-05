@@ -47,8 +47,21 @@ export type EditorAction =
   | { type: "items/clear" }
   | { type: "settings/direction"; direction: EditorState["direction"] }
   | { type: "items/reorder"; activeId: string; overId: string }
+  | { type: "items/rotate"; id: string }
+  | { type: "items/crop"; id: string; crop: CropRect | null }
+  | { type: "settings/sizeMode"; mode: EditorState["sizeMode"] }
+  | { type: "settings/customSize"; size: number }
+  | { type: "settings/gap"; gap: number }
+  | { type: "settings/background"; background: string }
+  | { type: "settings/format"; format: EditorState["format"] }
+  | { type: "settings/jpegQuality"; quality: number }
   | { type: "processing/start" }
   | { type: "processing/end" };
+
+// 0→90→180→270→0と時計回りに循環させる
+const ROTATION_SEQUENCE = [0, 90, 180, 270] as const;
+const nextRotation = (rotation: ImageItem["rotation"]): ImageItem["rotation"] =>
+  ROTATION_SEQUENCE[(ROTATION_SEQUENCE.indexOf(rotation) + 1) % ROTATION_SEQUENCE.length];
 
 export const createInitialEditorState = (): EditorState => ({
   items: [],
@@ -100,6 +113,32 @@ export const editorReducer = (
 
       return { ...state, items };
     }
+    case "items/rotate":
+      return {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === action.id ? { ...item, rotation: nextRotation(item.rotation) } : item,
+        ),
+      };
+    case "items/crop":
+      return {
+        ...state,
+        items: state.items.map((item) =>
+          item.id === action.id ? { ...item, crop: action.crop } : item,
+        ),
+      };
+    case "settings/sizeMode":
+      return { ...state, sizeMode: action.mode };
+    case "settings/customSize":
+      return { ...state, customSize: action.size };
+    case "settings/gap":
+      return { ...state, gap: action.gap };
+    case "settings/background":
+      return { ...state, background: action.background };
+    case "settings/format":
+      return { ...state, format: action.format };
+    case "settings/jpegQuality":
+      return { ...state, jpegQuality: action.quality };
     case "processing/start":
       return { ...state, processing: state.processing + 1 };
     // 多重に走る非同期処理が独立してstart/endするため、カウントは0未満にしない

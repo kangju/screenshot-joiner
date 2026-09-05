@@ -166,6 +166,118 @@ describe("editor state", () => {
     expect(reordered.items).toEqual([first, second]);
   });
 
+  it("rotates the targeted item 90 degrees clockwise without changing other items", () => {
+    const first = createImageItem("first", 0);
+    const second = createImageItem("second", 0);
+    const state = withItems([first, second]);
+
+    const rotated = editorReducer(state, { type: "items/rotate", id: "first" });
+
+    expect(rotated.items).toEqual([{ ...first, rotation: 90 }, second]);
+  });
+
+  it("cycles rotation through 0, 90, 180, 270, and back to 0", () => {
+    const item = createImageItem("first", 0);
+    let state = withItems([item]);
+
+    const expectedSequence: ImageItem["rotation"][] = [90, 180, 270, 0];
+
+    for (const expectedRotation of expectedSequence) {
+      state = editorReducer(state, { type: "items/rotate", id: "first" });
+      expect(state.items[0].rotation).toBe(expectedRotation);
+    }
+  });
+
+  it("does nothing when rotating an id that is not present", () => {
+    const first = createImageItem("first", 0);
+    const state = withItems([first]);
+
+    const result = editorReducer(state, { type: "items/rotate", id: "missing" });
+
+    expect(result.items).toEqual([first]);
+  });
+
+  it("sets the targeted item's crop rect without changing other items", () => {
+    const first = createImageItem("first", 0);
+    const second = createImageItem("second", 0);
+    const state = withItems([first, second]);
+    const rect = { x: 5, y: 6, width: 100, height: 200 };
+
+    const cropped = editorReducer(state, { type: "items/crop", id: "first", crop: rect });
+
+    expect(cropped.items).toEqual([{ ...first, crop: rect }, second]);
+  });
+
+  it("clears the targeted item's crop rect back to null", () => {
+    const first = createImageItem("first", 0);
+    const state = withItems([first]);
+
+    const reset = editorReducer(state, { type: "items/crop", id: "first", crop: null });
+
+    expect(reset.items[0].crop).toBeNull();
+  });
+
+  it("does nothing when cropping an id that is not present", () => {
+    const first = createImageItem("first", 0);
+    const state = withItems([first]);
+
+    const result = editorReducer(state, {
+      type: "items/crop",
+      id: "missing",
+      crop: { x: 0, y: 0, width: 10, height: 10 },
+    });
+
+    expect(result.items).toEqual([first]);
+  });
+
+  it("switches the size mode without changing anything else", () => {
+    const state = createInitialEditorState();
+
+    const result = editorReducer(state, { type: "settings/sizeMode", mode: "fitWidth" });
+
+    expect(result).toEqual({ ...state, sizeMode: "fitWidth" });
+  });
+
+  it("sets the custom size without changing anything else", () => {
+    const state = createInitialEditorState();
+
+    const result = editorReducer(state, { type: "settings/customSize", size: 300 });
+
+    expect(result).toEqual({ ...state, customSize: 300 });
+  });
+
+  it("sets the gap between images without changing anything else", () => {
+    const state = createInitialEditorState();
+
+    const result = editorReducer(state, { type: "settings/gap", gap: 12 });
+
+    expect(result).toEqual({ ...state, gap: 12 });
+  });
+
+  it("sets the background color without changing anything else", () => {
+    const state = createInitialEditorState();
+
+    const result = editorReducer(state, { type: "settings/background", background: "#000000" });
+
+    expect(result).toEqual({ ...state, background: "#000000" });
+  });
+
+  it("switches the export format without changing anything else", () => {
+    const state = createInitialEditorState();
+
+    const result = editorReducer(state, { type: "settings/format", format: "jpeg" });
+
+    expect(result).toEqual({ ...state, format: "jpeg" });
+  });
+
+  it("sets the JPEG quality without changing anything else", () => {
+    const state = createInitialEditorState();
+
+    const result = editorReducer(state, { type: "settings/jpegQuality", quality: 0.5 });
+
+    expect(result).toEqual({ ...state, jpegQuality: 0.5 });
+  });
+
   it("counts overlapping in-flight batches instead of a plain flag", () => {
     const state = createInitialEditorState();
 

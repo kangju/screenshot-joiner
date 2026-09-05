@@ -60,7 +60,7 @@ describe("ImageList", () => {
 
     try {
       render(
-        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
       );
 
       expect(screen.getByRole("button", { name: "削除: first.png" })).toBeInTheDocument();
@@ -78,7 +78,7 @@ describe("ImageList", () => {
     // mismatches rather than spurious ones caused by unmarked adjacent text nodes.
     const restoreServerMatchMedia = mockMatchMedia(false);
     const serverHtml = renderToString(
-      <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+      <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
     );
     restoreServerMatchMedia();
 
@@ -98,7 +98,7 @@ describe("ImageList", () => {
       act(() => {
         root = hydrateRoot(
           container,
-          <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+          <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
         );
       });
 
@@ -124,7 +124,7 @@ describe("ImageList", () => {
 
     try {
       render(
-        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
       );
 
       expect(screen.queryByRole("button", { name: "削除: first.png" })).not.toBeInTheDocument();
@@ -150,7 +150,7 @@ describe("ImageList", () => {
     const restore = mockMatchMedia(true);
 
     try {
-      render(<ImageList items={[]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />);
+      render(<ImageList items={[]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />);
 
       expect(screen.queryByRole("button", { name: "編集" })).not.toBeInTheDocument();
     } finally {
@@ -163,7 +163,7 @@ describe("ImageList", () => {
 
     try {
       render(
-        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
       );
 
       expect(screen.queryByRole("button", { name: "並べ替え: first.png" })).not.toBeInTheDocument();
@@ -175,7 +175,7 @@ describe("ImageList", () => {
 
     try {
       render(
-        <ImageList items={[makeItem("second")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} />,
+        <ImageList items={[makeItem("second")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
       );
 
       expect(screen.getByRole("button", { name: "並べ替え: second.png" })).toHaveAttribute(
@@ -198,6 +198,8 @@ describe("ImageList", () => {
           onAddFiles={jest.fn()}
           onRemove={jest.fn()}
           onReorder={onReorder}
+          onRotate={jest.fn()}
+          onCrop={jest.fn()}
         />,
       );
 
@@ -221,12 +223,150 @@ describe("ImageList", () => {
           onAddFiles={jest.fn()}
           onRemove={jest.fn()}
           onReorder={onReorder}
+          onRotate={jest.fn()}
+          onCrop={jest.fn()}
         />,
       );
 
       capturedOnDragEnd?.({ active: { id: "first" }, over: null });
 
       expect(onReorder).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+
+  it("shows a rotate button per row only when row controls are visible", () => {
+    const restore = mockMatchMedia(true);
+
+    try {
+      render(
+        <ImageList
+          items={[makeItem("first")]}
+          onAddFiles={jest.fn()}
+          onRemove={jest.fn()}
+          onReorder={jest.fn()}
+          onRotate={jest.fn()}
+          onCrop={jest.fn()}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "回転: first.png" })).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+
+    const restoreWide = mockMatchMedia(false);
+
+    try {
+      render(
+        <ImageList
+          items={[makeItem("second")]}
+          onAddFiles={jest.fn()}
+          onRemove={jest.fn()}
+          onReorder={jest.fn()}
+          onRotate={jest.fn()}
+          onCrop={jest.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "回転: second.png" })).toHaveAttribute(
+        "title",
+        "回転",
+      );
+    } finally {
+      restoreWide();
+    }
+  });
+
+  it("calls onRotate with the item id when the rotate button is clicked", async () => {
+    const user = userEvent.setup();
+    const restore = mockMatchMedia(false);
+    const onRotate = jest.fn();
+
+    try {
+      render(
+        <ImageList
+          items={[makeItem("first")]}
+          onAddFiles={jest.fn()}
+          onRemove={jest.fn()}
+          onReorder={jest.fn()}
+          onRotate={onRotate}
+          onCrop={jest.fn()}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "回転: first.png" }));
+
+      expect(onRotate).toHaveBeenCalledWith("first");
+    } finally {
+      restore();
+    }
+  });
+
+  it("shows a crop button per row only when row controls are visible", () => {
+    const restore = mockMatchMedia(true);
+
+    try {
+      render(
+        <ImageList
+          items={[makeItem("first")]}
+          onAddFiles={jest.fn()}
+          onRemove={jest.fn()}
+          onReorder={jest.fn()}
+          onRotate={jest.fn()}
+          onCrop={jest.fn()}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "トリミング: first.png" })).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+
+    const restoreWide = mockMatchMedia(false);
+
+    try {
+      render(
+        <ImageList
+          items={[makeItem("second")]}
+          onAddFiles={jest.fn()}
+          onRemove={jest.fn()}
+          onReorder={jest.fn()}
+          onRotate={jest.fn()}
+          onCrop={jest.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "トリミング: second.png" })).toHaveAttribute(
+        "title",
+        "トリミング",
+      );
+    } finally {
+      restoreWide();
+    }
+  });
+
+  it("calls onCrop with the item id when the crop button is clicked", async () => {
+    const user = userEvent.setup();
+    const restore = mockMatchMedia(false);
+    const onCrop = jest.fn();
+
+    try {
+      render(
+        <ImageList
+          items={[makeItem("first")]}
+          onAddFiles={jest.fn()}
+          onRemove={jest.fn()}
+          onReorder={jest.fn()}
+          onRotate={jest.fn()}
+          onCrop={onCrop}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
+
+      expect(onCrop).toHaveBeenCalledWith("first");
     } finally {
       restore();
     }

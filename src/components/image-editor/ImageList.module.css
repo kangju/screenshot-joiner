@@ -130,6 +130,40 @@
   white-space: nowrap;
 }
 
+.rowRotate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.rowRotate:hover {
+  background: var(--color-border);
+}
+
+.rowCrop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.rowCrop:hover {
+  background: var(--color-border);
+}
+
 .rowDelete {
   display: flex;
   align-items: center;

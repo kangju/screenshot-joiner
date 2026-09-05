@@ -1,0 +1,90 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 55%);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(100%, 32rem);
+  max-height: 90vh;
+  padding: 1rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+}
+
+.canvasWrapper {
+  max-width: 100%;
+  max-height: 60vh;
+}
+
+.canvas {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.coordInputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.coordInputLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.coordInput {
+  width: 5rem;
+  min-height: 44px;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 0.85rem;
+}
+
+.confirmErrorMessage {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: 0.75rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.resetButton,
+.cancelButton,
+.confirmButton {
+  min-height: 44px;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.confirmButton {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}

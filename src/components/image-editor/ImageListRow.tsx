@@ -48,7 +48,12 @@ export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }:
       <span className={styles.thumb} aria-hidden="true">
         <ImageIcon size={16} />
       </span>
-      <span className={styles.name}>{item.name}</span>
+      {/* 操作ボタン表示中は320px固定幅の列に4ボタン分の余地がないため、
+          ファイル名は視覚的にのみ隠す(visually-hiddenでDOM上はテキストを残し、
+          各ボタンのaria-labelと合わせてスクリーンリーダーには引き続き伝わる) */}
+      <span className={showControls ? `${styles.name} visually-hidden` : styles.name}>
+        {item.name}
+      </span>
       {showControls && (
         <button
           type="button"

@@ -34,6 +34,9 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P2-04 Auto-scroll a long list during drag.
 - P2-05 Provide accessible icon buttons and tooltips.
 - P2-06 Hide row reorder/delete controls on narrow viewports behind an edit-mode toggle.
+- P2-07 Always show the filename in each list row.
+- P2-08 Render list-row thumbnails to preserve aspect ratio (contain, not cover).
+- P2-09 Show short text labels alongside rotate/crop icons in mobile edit mode.
 
 ## Phase 3 — Transformations
 

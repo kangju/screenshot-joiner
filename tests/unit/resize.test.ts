@@ -1,4 +1,4 @@
-import { fitToHeight, fitToWidth } from "@/lib/resize";
+import { computeContainScale, fitToHeight, fitToWidth } from "@/lib/resize";
 
 describe("fitToWidth", () => {
   it("scales height to match the target width while preserving aspect ratio", () => {
@@ -43,5 +43,26 @@ describe("fitToHeight", () => {
       width: 0,
       height: 400,
     });
+  });
+});
+
+describe("computeContainScale", () => {
+  it("limits the scale by width for a wide source (object-fit: contain)", () => {
+    // source 200x100(横長)をbox 50x50に収める場合、幅方向がボトルネックになる
+    expect(computeContainScale({ width: 200, height: 100 }, { width: 50, height: 50 })).toBe(0.25);
+  });
+
+  it("limits the scale by height for a tall source (object-fit: contain)", () => {
+    // source 100x200(縦長)をbox 50x50に収める場合、高さ方向がボトルネックになる
+    expect(computeContainScale({ width: 100, height: 200 }, { width: 50, height: 50 })).toBe(0.25);
+  });
+
+  it("returns exactly 1 when the source already fits the box", () => {
+    expect(computeContainScale({ width: 100, height: 50 }, { width: 100, height: 50 })).toBe(1);
+  });
+
+  it("returns 0 instead of Infinity/NaN for a zero-width or zero-height source", () => {
+    expect(computeContainScale({ width: 0, height: 50 }, { width: 100, height: 100 })).toBe(0);
+    expect(computeContainScale({ width: 50, height: 0 }, { width: 100, height: 100 })).toBe(0);
   });
 });

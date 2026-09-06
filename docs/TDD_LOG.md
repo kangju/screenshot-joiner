@@ -18,8 +18,10 @@ entry.
 ## Current status (the one section of this file that gets edited in place, not appended to)
 
 - Completed: Phase 0 through Phase 6 (all P0-xx through P6-xx behaviors),
-  plus the post-release Cloudflare Workers static-assets deploy fix and
-  P5-06 (timestamped download filename).
+  plus the post-release Cloudflare Workers static-assets deploy fix,
+  P5-06 (timestamped download filename), and P2-07/08/09 (ImageListRow
+  two-row layout: always-visible filename, contain-fit thumbnails, mobile
+  rotate/crop labels).
 - Open residual risks: no keyboard focus trap in the crop dialog (Tab can
   still reach elements behind the overlay); ZIP CRC-32/encryption is not
   verified by parsing the central directory — corrupted/encrypted entries
@@ -29,7 +31,10 @@ entry.
   Phase 6's cross-browser/device checks (P6-01/02/03) used WebKit/Firefox
   plus touch-viewport emulation as a proxy, reported as such, not as
   equivalent to real-device QA; the `wrangler.jsonc` static-assets deploy
-  has not yet been confirmed against a real Cloudflare deploy.
+  has not yet been confirmed against a real Cloudflare deploy; no dedicated
+  tap-to-expand affordance for a truncated list-row filename (relies on
+  `title`); crop terminology ("トリミング") is inconsistent with Issue #26's
+  suggested wording pending Issue #28's dialog-wide rename.
 - Last full-check result: all four checks (`test` / `typecheck` / `lint` /
   `build`) green, per the most recent dated entry at the bottom of this
   file.
@@ -664,3 +669,58 @@ Residual risk: the actual live `wrangler deploy` behavior against this config ha
   (clean), `npm run lint` (clean), `npm run build` (static export succeeds)
 - Residual risk: none identified
 - Commit: a30dd98
+
+### 2026-09-06 — P2-07/08/09 ImageListRow two-row layout redesign
+
+- Requirement: P2-07/P2-08/P2-09 (post-release addition, Issues #24/#25/#26
+  from a Codex real-screen review) — the list row hid the filename behind
+  `visually-hidden` whenever `showControls` was true, which on desktop is
+  *always* true, so filenames were never visible outside a screen reader;
+  the thumbnail used a cover-style crop that hid non-square aspect ratios;
+  mobile edit-mode rotate/crop buttons were icon-only with no visible label
+- RED: `image-list.test.tsx` expected the rendered filename to never carry
+  `visually-hidden`, expected a `${width}×${height}` dimensions string
+  (tracking `getTransformedSize`, including after crop/rotation), expected
+  visible "回転"/"トリミング" text only when `isCompact`, and — via a new
+  `HTMLCanvasElement.prototype.getContext` mock ported from
+  `page.test.tsx` — expected the thumbnail's `drawImage` call to draw a
+  centered, non-overflowing (contain) rectangle instead of the prior
+  cover-shaped one; `resize.test.ts` expected a not-yet-existing
+  `computeContainScale`; `page.test.tsx` expected the rotate button's
+  accessible name to be `右へ90°回転: {name}` instead of `回転: {name}`
+- Change: restructured `ImageListRow.tsx`'s `<li>` into a top block
+  (thumbnail + always-visible filename + dimensions) and a controls block
+  (handle/rotate/crop/delete, still gated on `showControls`); added
+  `computeContainScale` to `src/lib/resize.ts` and used it in place of the
+  prior `Math.max` cover calculation; added an `isCompact` prop so
+  rotate/crop show a short visible label only in mobile edit mode, while
+  the more specific `右へ90°回転`(aria-label/title) applies at every
+  viewport; renamed `ImageList.tsx`'s edit toggle from `編集` to
+  `並べ替え・編集`. A `codex-review` plan consultation before implementation
+  caught two issues addressed in the design itself: it rejected an earlier
+  draft's plan to also rename the crop button's accessible name to
+  `切り抜き`(would have been inconsistent with `CropDialog`'s still-`トリミング`
+  wording), and it flagged that testing only the extracted pure
+  `computeContainScale` wouldn't catch a wiring mistake — leading to the
+  `drawImage`-mock test described above
+- Verification: `full-check` all green; `browser-check` (Playwright)
+  confirmed at 320px the filename is visible with no horizontal overflow,
+  a non-square thumbnail actually letterboxes (sampled transparent pixels
+  above/below the drawn image) and updates after rotation, mobile-edit
+  labels appear only below the compact breakpoint, and mouse-drag /
+  keyboard reordering still work with the taller two-row height;
+  `a11y-check` (axe-core, both desktop and mobile-edit states) found zero
+  violations, confirmed Tab order reaches all four row buttons per item,
+  focus outline is visible, and the new `.dimensions` text contrast is
+  5.89:1 against its panel background (independently recomputed, not just
+  trusted from axe)
+- Full checks: `npm test -- --runInBand` (202/202), `npm run typecheck`
+  (clean), `npm run lint` (clean), `npm run build` (static export succeeds)
+- Residual risk: full-name inspection for a truncated filename still
+  relies on the `title` attribute (hover, or long-press on some mobile
+  browsers) — there is no dedicated tap-to-expand affordance for a sighted
+  touch/keyboard user who isn't using a screen reader (screen-reader users
+  already get the full name via each button's `aria-label`); crop
+  terminology ("トリミング") intentionally left unchanged pending Issue #28,
+  which will rename it project-wide together with `CropDialog`
+- Commit: 06ec789

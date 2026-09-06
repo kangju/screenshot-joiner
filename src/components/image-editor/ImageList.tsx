@@ -112,7 +112,7 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
               ) : (
                 <>
                   <Pencil size={14} aria-hidden="true" />
-                  編集
+                  並べ替え・編集
                 </>
               )}
             </button>
@@ -184,6 +184,7 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
                   key={item.id}
                   item={item}
                   showControls={showRowControls}
+                  isCompact={isCompact}
                   onRemove={onRemove}
                   onRotate={onRotate}
                   onCrop={onCrop}

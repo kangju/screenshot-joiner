@@ -99,7 +99,10 @@
 
 .row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  /* 列方向ではcenterだと子要素(.rowTop/.rowControls)が行幅いっぱいに
+     広がらず、ellipsis省略やボタンの折り返しが働かなくなるためstretchにする */
+  align-items: stretch;
   gap: 0.6rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
@@ -123,6 +126,33 @@
   z-index: 1;
   background: var(--color-surface);
   box-shadow: var(--shadow-floating);
+}
+
+.rowTop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.rowInfo {
+  display: flex;
+  flex-direction: column;
+  /* 残り幅いっぱいを取ることで、.nameのellipsisが実際に働く境界幅を持つ */
+  flex: 1;
+  min-width: 0;
+}
+
+.dimensions {
+  font-size: var(--text-caption);
+  color: var(--color-text-muted);
+}
+
+.rowControls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .rowHandle {
@@ -172,9 +202,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--target-min);
+  gap: 0.4rem;
+  min-width: var(--target-min);
   height: var(--target-min);
   flex-shrink: 0;
+  padding: 0.5rem 0.9rem;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -190,9 +222,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--target-min);
+  gap: 0.4rem;
+  min-width: var(--target-min);
   height: var(--target-min);
   flex-shrink: 0;
+  padding: 0.5rem 0.9rem;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;

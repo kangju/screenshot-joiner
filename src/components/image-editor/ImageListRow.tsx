@@ -5,7 +5,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Crop, GripVertical, RotateCw, Trash2 } from "lucide-react";
 
-import { renderTransformedImage } from "@/lib/image-transform";
+import { getTransformedSize, renderTransformedImage } from "@/lib/image-transform";
+import { computeContainScale } from "@/lib/resize";
 import type { ImageItem } from "@/types/editor";
 
 import styles from "./ImageList.module.css";
@@ -21,13 +22,14 @@ const THUMB_SOURCE_MAX_DIMENSION = 64;
 type ImageListRowProps = {
   item: ImageItem;
   showControls: boolean;
+  isCompact: boolean;
   onRemove: (id: string) => void;
   onRotate: (id: string) => void;
   onCrop: (id: string) => void;
 };
 
 // 一覧の1行分。dnd-kitのuseSortableでドラッグ操作を行としてバインドする。
-export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }: ImageListRowProps) {
+export function ImageListRow({ item, showControls, isCompact, onRemove, onRotate, onCrop }: ImageListRowProps) {
   const { setNodeRef, transform, transition, attributes, listeners, isDragging } = useSortable({
     id: item.id,
   });
@@ -74,10 +76,19 @@ export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }:
       THUMB_SOURCE_MAX_DIMENSION,
     );
 
-    // CSSのobject-fit: coverと同様、アスペクト比を保ったまま余白なく埋める
-    const scale = Math.max(canvas.width / transformed.width, canvas.height / transformed.height);
+    // CSSのobject-fit: containと同様、アスペクト比を保ったまま枠内に収める(はみ出さない)
+    const scale = computeContainScale(
+      { width: transformed.width, height: transformed.height },
+      { width: canvas.width, height: canvas.height },
+    );
     const drawWidth = transformed.width * scale;
     const drawHeight = transformed.height * scale;
+
+    // scaleが0(0幅/0高さの変形結果)のとき、drawImageに幅/高さ0の矩形を渡すと
+    // 例外になりうるため描画をスキップする(空のcanvasのまま)
+    if (drawWidth === 0 || drawHeight === 0) {
+      return;
+    }
 
     context.drawImage(
       transformed,
@@ -88,65 +99,78 @@ export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }:
     );
   }, [item.bitmap, item.crop, item.rotation]);
 
+  const { width: transformedWidth, height: transformedHeight } = getTransformedSize({
+    sourceWidth: item.bitmap.width,
+    sourceHeight: item.bitmap.height,
+    crop: item.crop,
+    rotation: item.rotation,
+  });
+
   return (
     <li
       ref={setNodeRef}
       style={style}
       className={isDragging ? `${styles.row} ${styles.rowDragging}` : styles.row}
     >
-      {/* 並べ替え用ハンドル。dnd-kitのattributes/listenersをそのまま渡すことで
-          マウス・タッチ・キーボードいずれの操作でもドラッグを開始できる */}
+      <div className={styles.rowTop}>
+        <canvas ref={thumbCanvasRef} className={styles.thumb} aria-hidden="true" />
+        <div className={styles.rowInfo}>
+          {/* ファイル名は常に見える通常テキスト(以前はvisually-hiddenで
+              視覚的に隠すことがあったが、業務スクリーンショットが並ぶ実利用場面で
+              行を識別できなくなるため廃止した)。長い場合はCSSのellipsisで
+              省略し、title属性でフルネームを確認できる */}
+          <span className={styles.name} title={item.name}>
+            {item.name}
+          </span>
+          <span className={styles.dimensions}>
+            {transformedWidth}×{transformedHeight}
+          </span>
+        </div>
+      </div>
       {showControls && (
-        <button
-          type="button"
-          className={styles.rowHandle}
-          aria-label={`並べ替え: ${item.name}`}
-          title="並べ替え"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical size={16} aria-hidden="true" />
-        </button>
-      )}
-      <canvas ref={thumbCanvasRef} className={styles.thumb} aria-hidden="true" />
-      {/* 操作ボタン表示中は320px固定幅の列に4ボタン分の余地がないため、
-          ファイル名は視覚的にのみ隠す(visually-hiddenでDOM上はテキストを残し、
-          各ボタンのaria-labelと合わせてスクリーンリーダーには引き続き伝わる) */}
-      <span className={showControls ? `${styles.name} visually-hidden` : styles.name}>
-        {item.name}
-      </span>
-      {showControls && (
-        <button
-          type="button"
-          className={styles.rowRotate}
-          aria-label={`回転: ${item.name}`}
-          title="回転"
-          onClick={() => onRotate(item.id)}
-        >
-          <RotateCw size={16} aria-hidden="true" />
-        </button>
-      )}
-      {showControls && (
-        <button
-          type="button"
-          className={styles.rowCrop}
-          aria-label={`トリミング: ${item.name}`}
-          title="トリミング"
-          onClick={() => onCrop(item.id)}
-        >
-          <Crop size={16} aria-hidden="true" />
-        </button>
-      )}
-      {showControls && (
-        <button
-          type="button"
-          className={styles.rowDelete}
-          aria-label={`削除: ${item.name}`}
-          title="削除"
-          onClick={() => onRemove(item.id)}
-        >
-          <Trash2 size={16} aria-hidden="true" />
-        </button>
+        <div className={styles.rowControls}>
+          {/* 並べ替え用ハンドル。dnd-kitのattributes/listenersをそのまま渡すことで
+              マウス・タッチ・キーボードいずれの操作でもドラッグを開始できる */}
+          <button
+            type="button"
+            className={styles.rowHandle}
+            aria-label={`並べ替え: ${item.name}`}
+            title="並べ替え"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={styles.rowRotate}
+            aria-label={`右へ90°回転: ${item.name}`}
+            title="右へ90°回転"
+            onClick={() => onRotate(item.id)}
+          >
+            <RotateCw size={16} aria-hidden="true" />
+            {isCompact && <span>回転</span>}
+          </button>
+          <button
+            type="button"
+            className={styles.rowCrop}
+            aria-label={`トリミング: ${item.name}`}
+            title="トリミング"
+            onClick={() => onCrop(item.id)}
+          >
+            <Crop size={16} aria-hidden="true" />
+            {isCompact && <span>トリミング</span>}
+          </button>
+          <button
+            type="button"
+            className={styles.rowDelete}
+            aria-label={`削除: ${item.name}`}
+            title="削除"
+            onClick={() => onRemove(item.id)}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+          </button>
+        </div>
       )}
     </li>
   );

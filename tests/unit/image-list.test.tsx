@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
@@ -54,7 +54,56 @@ const mockMatchMedia = (matches: boolean) => {
   };
 };
 
+type MockCanvasContext = {
+  fillStyle: string;
+  fillRect: jest.Mock;
+  drawImage: jest.Mock;
+  translate: jest.Mock;
+  rotate: jest.Mock;
+};
+
 describe("ImageList", () => {
+  // サムネイル描画(ImageListRowのuseEffect)が実際にcontain(はみ出さない)矩形で
+  // drawImageを呼んでいるかを検証するため、tests/unit/page.test.tsxと同じ
+  // canvasモックパターンを導入する。canvasごとにコンテキストを記憶しておき、
+  // レンダリング後にDOM上のcanvas要素と突き合わせて呼び出し内容を確認する
+  let canvasContexts: Array<{ canvas: HTMLCanvasElement; context: MockCanvasContext }>;
+
+  beforeEach(() => {
+    canvasContexts = [];
+    jest
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockImplementation(function (this: HTMLCanvasElement) {
+        let entry = canvasContexts.find((candidate) => candidate.canvas === this);
+
+        if (!entry) {
+          entry = {
+            canvas: this,
+            context: {
+              fillStyle: "",
+              fillRect: jest.fn(),
+              drawImage: jest.fn(),
+              translate: jest.fn(),
+              rotate: jest.fn(),
+            },
+          };
+          canvasContexts.push(entry);
+        }
+
+        return entry.context as unknown as CanvasRenderingContext2D;
+      });
+  });
+
+  afterEach(() => {
+    // page.test.tsxと同じ順序上の理由: afterEachはinside-outで実行されるため、
+    // モジュール読み込み時に登録されたRTLの自動cleanupより先にここで明示的に
+    // cleanup()を呼び、getContextがまだモックされている間にunmountを終わらせる
+    // (先にrestoreAllMocks()すると、残存するパッシブエフェクトがjsdom未実装の
+    // 本物のgetContextを呼んで例外になりうる)
+    cleanup();
+    jest.restoreAllMocks();
+  });
+
   it("always shows the delete button on a wide viewport and never shows an edit toggle", () => {
     const restore = mockMatchMedia(false);
 
@@ -64,7 +113,7 @@ describe("ImageList", () => {
       );
 
       expect(screen.getByRole("button", { name: "削除: first.png" })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "編集" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "並べ替え・編集" })).not.toBeInTheDocument();
     } finally {
       restore();
     }
@@ -106,7 +155,7 @@ describe("ImageList", () => {
 
       // The effect still does its job after hydration: the UI syncs to the real
       // (compact) viewport.
-      expect(within(container).getByRole("button", { name: "編集" })).toBeInTheDocument();
+      expect(within(container).getByRole("button", { name: "並べ替え・編集" })).toBeInTheDocument();
       expect(within(container).queryByRole("button", { name: "削除: first.png" })).not.toBeInTheDocument();
     } finally {
       act(() => {
@@ -128,7 +177,7 @@ describe("ImageList", () => {
       );
 
       expect(screen.queryByRole("button", { name: "削除: first.png" })).not.toBeInTheDocument();
-      const editButton = screen.getByRole("button", { name: "編集" });
+      const editButton = screen.getByRole("button", { name: "並べ替え・編集" });
       expect(editButton).toHaveAttribute("aria-pressed", "false");
 
       await user.click(editButton);
@@ -140,7 +189,7 @@ describe("ImageList", () => {
       await user.click(doneButton);
 
       expect(screen.queryByRole("button", { name: "削除: first.png" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "編集" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "並べ替え・編集" })).toBeInTheDocument();
     } finally {
       restore();
     }
@@ -152,7 +201,7 @@ describe("ImageList", () => {
     try {
       render(<ImageList items={[]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />);
 
-      expect(screen.queryByRole("button", { name: "編集" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "並べ替え・編集" })).not.toBeInTheDocument();
     } finally {
       restore();
     }
@@ -251,7 +300,7 @@ describe("ImageList", () => {
         />,
       );
 
-      expect(screen.queryByRole("button", { name: "回転: first.png" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "右へ90°回転: first.png" })).not.toBeInTheDocument();
     } finally {
       restore();
     }
@@ -270,9 +319,9 @@ describe("ImageList", () => {
         />,
       );
 
-      expect(screen.getByRole("button", { name: "回転: second.png" })).toHaveAttribute(
+      expect(screen.getByRole("button", { name: "右へ90°回転: second.png" })).toHaveAttribute(
         "title",
-        "回転",
+        "右へ90°回転",
       );
     } finally {
       restoreWide();
@@ -296,7 +345,7 @@ describe("ImageList", () => {
         />,
       );
 
-      await user.click(screen.getByRole("button", { name: "回転: first.png" }));
+      await user.click(screen.getByRole("button", { name: "右へ90°回転: first.png" }));
 
       expect(onRotate).toHaveBeenCalledWith("first");
     } finally {
@@ -368,6 +417,148 @@ describe("ImageList", () => {
 
       expect(onCrop).toHaveBeenCalledWith("first");
     } finally {
+      restore();
+    }
+  });
+
+  it("keeps the filename visible (not visually hidden) on a wide viewport", () => {
+    const restore = mockMatchMedia(false);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      const name = screen.getByText("first.png");
+      expect(name.className.split(" ")).not.toContain("visually-hidden");
+    } finally {
+      restore();
+    }
+  });
+
+  it("keeps the filename visible (not visually hidden) on a compact viewport even after entering edit mode", async () => {
+    const user = userEvent.setup();
+    const restore = mockMatchMedia(true);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "並べ替え・編集" }));
+
+      const name = screen.getByText("first.png");
+      expect(name.className.split(" ")).not.toContain("visually-hidden");
+    } finally {
+      restore();
+    }
+  });
+
+  it("shows the crop/rotation-adjusted image dimensions for an unmodified item", () => {
+    const restore = mockMatchMedia(false);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      // makeItem("first")のbitmapは100x100、crop/rotationなしのため、
+      // getTransformedSizeの結果は100x100のまま
+      expect(screen.getByText("100×100")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("shows dimensions that reflect a cropped item's effective size, not the raw bitmap size", () => {
+    const restore = mockMatchMedia(false);
+
+    try {
+      const croppedItem = {
+        ...makeItem("first"),
+        // crop有りの場合、getTransformedSizeはcropの幅・高さ(50x40)を
+        // (rotation 0のため変化なく)そのまま返す
+        crop: { x: 0, y: 0, width: 50, height: 40 },
+      };
+
+      render(
+        <ImageList items={[croppedItem]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      expect(screen.getByText("50×40")).toBeInTheDocument();
+      expect(screen.queryByText("100×100")).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("shows visible text labels next to the rotate and crop buttons on a compact viewport in edit mode", async () => {
+    const user = userEvent.setup();
+    const restore = mockMatchMedia(true);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "並べ替え・編集" }));
+
+      // aria-label(「右へ90°回転: first.png」「トリミング: first.png」)は属性であり
+      // getByTextの対象にならないため、ここで見つかるのは可視テキストラベルのみ
+      expect(screen.getByText("回転")).toBeInTheDocument();
+      expect(screen.getByText("トリミング")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("does not show visible text labels next to the rotate and crop buttons on a wide viewport", () => {
+    const restore = mockMatchMedia(false);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      expect(screen.queryByText("回転")).not.toBeInTheDocument();
+      expect(screen.queryByText("トリミング")).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("draws the row thumbnail using a contain (non-cropping) scale centered within the canvas", () => {
+    const restore = mockMatchMedia(false);
+    // devicePixelRatioがjsdomで未定義のケースに依存せず、期待値の計算を単純にするため
+    // 明示的に1へ固定する(本番コードはwindow.devicePixelRatio || 1でフォールバックする)
+    const originalDpr = window.devicePixelRatio;
+    Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: 1 });
+
+    try {
+      const wideItem = {
+        ...makeItem("first"),
+        // 非正方形(200x100)にすることで、cover(はみ出し埋め)とcontain(収める)の
+        // 描画矩形が異なる値になり、テストが実際に両者を区別できることを保証する
+        bitmap: { width: 200, height: 100, close: jest.fn() } as unknown as ImageBitmap,
+      };
+
+      const { container } = render(
+        <ImageList items={[wideItem]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      const thumbCanvas = container.querySelector("canvas");
+      expect(thumbCanvas).not.toBeNull();
+
+      const entry = canvasContexts.find((candidate) => candidate.canvas === thumbCanvas);
+      expect(entry).toBeDefined();
+
+      // サムネイルcanvasは36x28(dpr=1)。200x100の元画像はmaxDimension=64で
+      // 64x32に縮小される(transformed)。containスケールはmin(36/64, 28/32) = 0.5625で、
+      // 描画サイズは36x18、幅方向はぴったり(オフセット0)、高さ方向は中央寄せで
+      // (28-18)/2=5だけオフセットする(はみ出さず余白ができる)
+      expect(entry?.context.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 5, 36, 18);
+    } finally {
+      Object.defineProperty(window, "devicePixelRatio", { configurable: true, value: originalDpr });
       restore();
     }
   });

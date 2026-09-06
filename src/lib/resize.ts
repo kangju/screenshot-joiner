@@ -22,3 +22,7 @@ export const fitToHeight = (size: Size, targetHeight: number): Size => {
   const scale = targetHeight / size.height;
   return { width: size.width * scale, height: targetHeight };
 };
+
+// 枠(box)にsourceをはみ出さず収める(object-fit: containと同様)ためのスケールを算出する。
+export const computeContainScale = (source: Size, box: Size): number =>
+  Math.min(box.width / source.width, box.height / source.height);

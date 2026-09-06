@@ -1347,7 +1347,7 @@ describe("project scaffold", () => {
       expect(preview).toHaveAttribute("height", "270");
       expect(context.drawImage).toHaveBeenNthCalledWith(1, bitmap, 0, 0, 480, 270);
 
-      await user.click(screen.getByRole("button", { name: "回転: first.png" }));
+      await user.click(screen.getByRole("button", { name: "右へ90°回転: first.png" }));
 
       // 回転後: 実効サイズが360x640に入れ替わり、同じ0.75倍で270x480になる
       await waitFor(() => expect(preview).toHaveAttribute("width", "270"));
@@ -1399,8 +1399,8 @@ describe("project scaffold", () => {
 
       // 2枚目だけ180度回転する(寸法は変わらないはず)。回転を1回クリックする
       // たびにプレビューが再描画されるため、2回のクリックで6回描画されている
-      await user.click(screen.getByRole("button", { name: "回転: second.png" }));
-      await user.click(screen.getByRole("button", { name: "回転: second.png" }));
+      await user.click(screen.getByRole("button", { name: "右へ90°回転: second.png" }));
+      await user.click(screen.getByRole("button", { name: "右へ90°回転: second.png" }));
 
       await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(6));
       const lastCallIndex = context.drawImage.mock.calls.length - 1;
@@ -2223,7 +2223,7 @@ describe("project scaffold", () => {
 
       await user.upload(screen.getByLabelText("画像を追加"), [file]);
       await screen.findByText("huge.png");
-      await user.click(screen.getByRole("button", { name: "回転: huge.png" }));
+      await user.click(screen.getByRole("button", { name: "右へ90°回転: huge.png" }));
       await waitFor(() => expect(confirmSpy).not.toHaveBeenCalled());
 
       const canvasCountBeforeDownload = canvasContexts.length;

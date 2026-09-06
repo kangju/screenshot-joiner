@@ -8,7 +8,7 @@ on:
   pull_request:
     branches: [main]
 
-# checkoutのみ行うため、デフォルトの広い権限を必要最小限に絞る。
+# リポジトリの読み取り以外の権限は不要なため、デフォルトの広い権限を必要最小限に絞る。
 permissions:
   contents: read
 

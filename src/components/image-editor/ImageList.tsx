@@ -137,7 +137,11 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
         onChange={handleFileChange}
       />
       {items.length === 0 ? (
-        <ul className={styles.list} onDragOver={handleDragOver} onDrop={handleDrop}>
+        <ul
+          className={`${styles.list} ${styles.listEmpty}`}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
           <li className={styles.empty}>
             <span className={styles.emptyIcon} aria-hidden="true">
               <ImageIcon size={20} />
@@ -170,7 +174,11 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
           }}
         >
           <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
-            <ul className={styles.list} onDragOver={handleDragOver} onDrop={handleDrop}>
+            <ul
+              className={`${styles.list} ${styles.listFilled}`}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
               {items.map((item) => (
                 <ImageListRow
                   key={item.id}

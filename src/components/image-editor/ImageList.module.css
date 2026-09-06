@@ -19,8 +19,8 @@
 }
 
 .count {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
   color: var(--color-text-muted);
 }
 
@@ -36,33 +36,43 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  min-height: 44px;
+  min-height: var(--target-min);
   padding: 0.5rem 0.9rem;
   border: none;
   border-radius: var(--radius-sm);
   background: var(--color-accent);
   color: var(--color-accent-contrast);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.addButton:hover {
+  background: var(--color-accent-hover);
 }
 
 .editButton {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  min-height: 44px;
+  min-height: var(--target-min);
   padding: 0.5rem 0.9rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text-muted);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.editButton:hover {
+  background: var(--color-surface-hover);
 }
 
 .editButton[aria-pressed="true"] {
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-accent-text);
   border-color: var(--color-accent);
 }
 
@@ -73,9 +83,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  border: 1.5px dashed var(--color-border-strong);
   border-radius: var(--radius-md);
   min-height: 8rem;
+}
+
+/* 破線の強調は「まだ何もない/ここにドロップできる」ことを伝える空状態専用にし、
+   画像が入っている通常状態は落ち着いた実線にする */
+.listEmpty {
+  border: 1.5px dashed var(--color-border-strong);
+}
+
+.listFilled {
+  border: 1px solid var(--color-border);
 }
 
 .row {
@@ -84,18 +103,32 @@
   gap: 0.6rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .row:last-child {
   border-bottom: none;
 }
 
+.row:hover,
+.row:focus-within {
+  background: var(--color-surface-hover);
+}
+
+/* 掴んでいる行だけ持ち上がって見えるよう影を付ける(元の位置はopacityで半透明化) */
+.rowDragging {
+  position: relative;
+  z-index: 1;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+}
+
 .rowHandle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--target-min);
+  height: var(--target-min);
   flex-shrink: 0;
   border: none;
   border-radius: var(--radius-sm);
@@ -103,6 +136,7 @@
   color: var(--color-text-muted);
   touch-action: none;
   cursor: grab;
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .rowHandle:hover {
@@ -116,6 +150,8 @@
   width: 2.25rem;
   height: 1.75rem;
   flex-shrink: 0;
+  /* 白背景のスクリーンショットも一覧の背景から見分けられるよう、輪郭を付ける */
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   background: var(--color-accent-soft);
   color: var(--color-accent);
@@ -124,7 +160,7 @@
 .name {
   flex: 1;
   min-width: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-body);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -134,13 +170,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--target-min);
+  height: var(--target-min);
   flex-shrink: 0;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .rowRotate:hover {
@@ -151,13 +188,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--target-min);
+  height: var(--target-min);
   flex-shrink: 0;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .rowCrop:hover {
@@ -168,13 +206,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: var(--target-min);
+  height: var(--target-min);
   flex-shrink: 0;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-danger);
+  transition: background-color var(--duration-fast) var(--ease-standard);
 }
 
 .rowDelete:hover {
@@ -206,8 +245,8 @@
 .emptyTitle {
   margin: 0;
   max-width: 100%;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: var(--text-body);
+  font-weight: var(--weight-bold);
   color: var(--color-text);
   overflow-wrap: break-word;
 }
@@ -215,8 +254,8 @@
 .emptyHint {
   margin: 0;
   max-width: 100%;
-  font-size: 0.75rem;
-  line-height: 1.6;
+  font-size: var(--text-caption);
+  line-height: var(--leading-body);
   overflow-wrap: break-word;
 }
 
@@ -228,7 +267,7 @@
   min-width: 0;
   margin: 0;
   padding: 0 0.25rem;
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   color: var(--color-text-faint);
 }
 

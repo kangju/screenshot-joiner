@@ -84,7 +84,11 @@ export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }:
   }, [item.bitmap, item.crop, item.rotation]);
 
   return (
-    <li ref={setNodeRef} style={style} className={styles.row}>
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? `${styles.row} ${styles.rowDragging}` : styles.row}
+    >
       {/* 並べ替え用ハンドル。dnd-kitのattributes/listenersをそのまま渡すことで
           マウス・タッチ・キーボードいずれの操作でもドラッグを開始できる */}
       {showControls && (

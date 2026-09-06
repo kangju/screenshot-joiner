@@ -94,6 +94,14 @@ button {
   cursor: pointer;
 }
 
+/* フォーカス表示は消さず、全操作要素で見た目を統一する。:focus-visibleは
+   マウスクリックでは付かずキーボード操作時にのみ表示されるため、見た目を
+   整えつつ「フォーカス表示を消さない」要件は満たしたまま煩わしさを減らせる */
+:focus-visible {
+  outline: var(--focus-width) solid var(--color-accent);
+  outline-offset: var(--focus-offset);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

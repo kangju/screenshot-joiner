@@ -689,188 +689,208 @@ export default function Home() {
           />
         )}
         <div className={styles.rightColumn}>
-          <div className={styles.directionGroup}>
-            <button
-              type="button"
-              className={styles.directionButton}
-              aria-pressed={state.direction === "vertical"}
-              onClick={() => handleDirectionChange("vertical")}
-            >
-              <Rows3 size={14} aria-hidden="true" />
-              縦結合
-            </button>
-            <button
-              type="button"
-              className={styles.directionButton}
-              aria-pressed={state.direction === "horizontal"}
-              onClick={() => handleDirectionChange("horizontal")}
-            >
-              <Columns3 size={14} aria-hidden="true" />
-              横結合
-            </button>
-          </div>
-          <div className={styles.sizeGroup}>
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>結合設定</h2>
             <div className={styles.directionGroup}>
               <button
                 type="button"
                 className={styles.directionButton}
-                aria-pressed={state.sizeMode === "original"}
-                onClick={() => handleSizeModeChange("original")}
+                aria-pressed={state.direction === "vertical"}
+                onClick={() => handleDirectionChange("vertical")}
               >
-                原寸
+                <Rows3 size={14} aria-hidden="true" />
+                縦結合
               </button>
               <button
                 type="button"
                 className={styles.directionButton}
-                aria-pressed={state.sizeMode === "fitWidth"}
-                onClick={() => handleSizeModeChange("fitWidth")}
+                aria-pressed={state.direction === "horizontal"}
+                onClick={() => handleDirectionChange("horizontal")}
               >
-                幅揃え
-              </button>
-              <button
-                type="button"
-                className={styles.directionButton}
-                aria-pressed={state.sizeMode === "fitHeight"}
-                onClick={() => handleSizeModeChange("fitHeight")}
-              >
-                高さ揃え
-              </button>
-              <button
-                type="button"
-                className={styles.directionButton}
-                aria-pressed={state.sizeMode === "custom"}
-                onClick={() => handleSizeModeChange("custom")}
-              >
-                カスタム
+                <Columns3 size={14} aria-hidden="true" />
+                横結合
               </button>
             </div>
-            {state.sizeMode === "custom" && (
+            <div className={styles.sizeGroup}>
+              <div className={styles.directionGroup}>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.sizeMode === "original"}
+                  onClick={() => handleSizeModeChange("original")}
+                >
+                  原寸
+                </button>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.sizeMode === "fitWidth"}
+                  onClick={() => handleSizeModeChange("fitWidth")}
+                >
+                  幅揃え
+                </button>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.sizeMode === "fitHeight"}
+                  onClick={() => handleSizeModeChange("fitHeight")}
+                >
+                  高さ揃え
+                </button>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.sizeMode === "custom"}
+                  onClick={() => handleSizeModeChange("custom")}
+                >
+                  カスタム
+                </button>
+              </div>
+              {state.sizeMode === "custom" && (
+                <label className={styles.sizeInputLabel}>
+                  カスタムサイズ(px)
+                  <input
+                    type="number"
+                    min={1}
+                    className={styles.sizeInput}
+                    defaultValue={state.customSize ?? ""}
+                    onChange={handleCustomSizeChange}
+                  />
+                </label>
+              )}
+            </div>
+            <div className={styles.sizeGroup}>
               <label className={styles.sizeInputLabel}>
-                カスタムサイズ(px)
+                画像間隔(px)
                 <input
                   type="number"
-                  min={1}
+                  min={0}
                   className={styles.sizeInput}
-                  defaultValue={state.customSize ?? ""}
-                  onChange={handleCustomSizeChange}
+                  value={state.gap}
+                  onChange={handleGapChange}
                 />
               </label>
-            )}
-          </div>
-          <div className={styles.sizeGroup}>
-            <label className={styles.sizeInputLabel}>
-              画像間隔(px)
-              <input
-                type="number"
-                min={0}
-                className={styles.sizeInput}
-                value={state.gap}
-                onChange={handleGapChange}
-              />
-            </label>
-            <label className={styles.sizeInputLabel}>
-              背景色
-              <input
-                type="color"
-                className={styles.colorInput}
-                value={state.background}
-                onChange={handleBackgroundChange}
-              />
-            </label>
-          </div>
-          <div className={styles.sizeGroup}>
-            <div className={styles.directionGroup}>
-              <button
-                type="button"
-                className={styles.directionButton}
-                aria-pressed={state.format === "png"}
-                onClick={() => handleFormatChange("png")}
-              >
-                PNG
-              </button>
-              <button
-                type="button"
-                className={styles.directionButton}
-                aria-pressed={state.format === "jpeg"}
-                onClick={() => handleFormatChange("jpeg")}
-              >
-                JPEG
-              </button>
-            </div>
-            {state.format === "jpeg" && (
               <label className={styles.sizeInputLabel}>
-                JPEG品質
+                背景色
                 <input
-                  type="number"
-                  min={0.01}
-                  max={1}
-                  step={0.01}
-                  className={styles.sizeInput}
-                  defaultValue={state.jpegQuality}
-                  onChange={handleJpegQualityChange}
+                  type="color"
+                  className={styles.colorInput}
+                  value={state.background}
+                  onChange={handleBackgroundChange}
                 />
               </label>
+            </div>
+            <div className={styles.sizeGroup}>
+              <div className={styles.directionGroup}>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.format === "png"}
+                  onClick={() => handleFormatChange("png")}
+                >
+                  PNG
+                </button>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.format === "jpeg"}
+                  onClick={() => handleFormatChange("jpeg")}
+                >
+                  JPEG
+                </button>
+              </div>
+              {state.format === "jpeg" && (
+                <label className={styles.sizeInputLabel}>
+                  JPEG品質
+                  <input
+                    type="number"
+                    min={0.01}
+                    max={1}
+                    step={0.01}
+                    className={styles.sizeInput}
+                    defaultValue={state.jpegQuality}
+                    onChange={handleJpegQualityChange}
+                  />
+                </label>
+              )}
+            </div>
+          </section>
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>プレビュー</h2>
+            <div className={styles.preview}>
+              {state.items.length === 0 && (
+                <div className={styles.previewEmpty}>
+                  <span className={styles.previewEmptyIcon} aria-hidden="true">
+                    <Columns3 size={20} />
+                  </span>
+                  <p className={styles.previewEmptyText}>
+                    画像を追加すると、結合結果がここに表示されます
+                  </p>
+                </div>
+              )}
+              <canvas
+                ref={previewCanvasRef}
+                role="img"
+                aria-label="結合プレビュー"
+                className={styles.previewCanvas}
+                hidden={state.items.length === 0}
+              />
+            </div>
+            {state.processing > 0 && (
+              <p aria-live="polite" className={styles.status}>
+                画像を読み込み中です
+              </p>
             )}
-          </div>
-          <div className={styles.preview}>
-            <canvas
-              ref={previewCanvasRef}
-              role="img"
-              aria-label="結合プレビュー"
-              className={styles.previewCanvas}
-            />
-          </div>
-          {state.processing > 0 && (
-            <p aria-live="polite" className={styles.status}>
-              画像を読み込み中です
-            </p>
-          )}
-          {zipStatus && (
-            <div aria-live="polite" className={styles.zipStatus}>
-              <span>{ZIP_STAGE_LABEL[zipStatus.stage]}</span>
-              <button type="button" className={styles.zipCancelButton} onClick={zipStatus.cancel}>
-                キャンセル
+            {zipStatus && (
+              <div aria-live="polite" className={styles.zipStatus}>
+                <span>{ZIP_STAGE_LABEL[zipStatus.stage]}</span>
+                <button type="button" className={styles.zipCancelButton} onClick={zipStatus.cancel}>
+                  キャンセル
+                </button>
+              </div>
+            )}
+            {rejectedFileNames.length > 0 && (
+              <p role="alert" className={styles.alert}>
+                対応していない、または壊れた画像: {rejectedFileNames.join(", ")}
+              </p>
+            )}
+            {outputSize && (
+              <p className={styles.outputInfo}>
+                出力サイズ: {outputSize.width} × {outputSize.height}px(
+                {(outputSize.width * outputSize.height).toLocaleString("en-US")}px)
+              </p>
+            )}
+          </section>
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>書き出し</h2>
+            {copyStatus && (
+              <p aria-live="polite" className={styles.status}>
+                {copyStatus === "copied"
+                  ? "クリップボードにコピーしました"
+                  : "クリップボードにコピーできなかったため、PNGとしてダウンロードしました"}
+              </p>
+            )}
+            <div className={styles.exportBar}>
+              <button
+                type="button"
+                className={styles.copyButton}
+                disabled={state.items.length === 0}
+                onClick={handleCopy}
+              >
+                <Clipboard size={16} aria-hidden="true" />
+                PNGとしてコピー
+              </button>
+              <button
+                type="button"
+                className={styles.downloadButton}
+                disabled={state.items.length === 0}
+                onClick={handleDownload}
+              >
+                <Download size={16} aria-hidden="true" />
+                {state.format === "jpeg" ? "JPEGとして保存" : "PNGとして保存"}
               </button>
             </div>
-          )}
-          {rejectedFileNames.length > 0 && (
-            <p role="alert" className={styles.alert}>
-              対応していない、または壊れた画像: {rejectedFileNames.join(", ")}
-            </p>
-          )}
-          {outputSize && (
-            <p className={styles.outputInfo}>
-              出力サイズ: {outputSize.width} × {outputSize.height}px(
-              {(outputSize.width * outputSize.height).toLocaleString("en-US")}px)
-            </p>
-          )}
-          {copyStatus && (
-            <p aria-live="polite" className={styles.status}>
-              {copyStatus === "copied"
-                ? "クリップボードにコピーしました"
-                : "クリップボードにコピーできなかったため、PNGとしてダウンロードしました"}
-            </p>
-          )}
-          <div className={styles.exportBar}>
-            <button
-              type="button"
-              className={styles.copyButton}
-              disabled={state.items.length === 0}
-              onClick={handleCopy}
-            >
-              <Clipboard size={16} aria-hidden="true" />
-              PNGとしてコピー
-            </button>
-            <button
-              type="button"
-              className={styles.downloadButton}
-              disabled={state.items.length === 0}
-              onClick={handleDownload}
-            >
-              <Download size={16} aria-hidden="true" />
-              {state.format === "jpeg" ? "JPEGとして保存" : "PNGとして保存"}
-            </button>
-          </div>
+          </section>
         </div>
       </div>
     </main>

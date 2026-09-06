@@ -587,4 +587,66 @@ describe("ImageList", () => {
       restore();
     }
   });
+
+  it("shows short add-button guidance instead of drag&drop/paste text when the list is empty on a narrow viewport", () => {
+    const restore = mockMatchMedia(true);
+
+    try {
+      render(<ImageList items={[]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />);
+
+      expect(screen.getByText("「追加」から画像やZIPを選べます")).toBeInTheDocument();
+      expect(screen.queryByText("この一覧に画像またはZIPをドラッグ&ドロップ")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Ctrl\+V/)).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("shows the add-button hint in the footer on a narrow viewport before entering edit mode", () => {
+    const restore = mockMatchMedia(true);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      expect(screen.getByText("「追加」から画像やZIPを選べます")).toBeInTheDocument();
+      expect(screen.queryByText(/ここに画像をドロップ/)).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("shows drag-handle guidance in the footer on a narrow viewport after entering edit mode", async () => {
+    const user = userEvent.setup();
+    const restore = mockMatchMedia(true);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "並べ替え・編集" }));
+
+      expect(screen.getByText("左のハンドルを長押しして並べ替え")).toBeInTheDocument();
+      expect(screen.queryByText("「追加」から画像やZIPを選べます")).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("keeps the original drag&drop/Ctrl+V footer hint unchanged on a wide viewport", () => {
+    const restore = mockMatchMedia(false);
+
+    try {
+      render(
+        <ImageList items={[makeItem("first")]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      expect(screen.getByText(/ここに画像をドロップ/)).toBeInTheDocument();
+      expect(screen.queryByText("「追加」から画像やZIPを選べます")).not.toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
 });

@@ -9,7 +9,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import { Clipboard, Columns3, Download, Lock, Rows3 } from "lucide-react";
+import { Check, Clipboard, Columns3, Download, Lock, Rows3 } from "lucide-react";
 
 import { CropDialog } from "@/components/image-editor/CropDialog";
 import { ImageList } from "@/components/image-editor/ImageList";
@@ -691,6 +691,7 @@ export default function Home() {
         <div className={styles.rightColumn}>
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>結合設定</h2>
+            <span className={styles.groupLabel}>並べる方向</span>
             <div className={styles.directionGroup}>
               <button
                 type="button"
@@ -699,7 +700,8 @@ export default function Home() {
                 onClick={() => handleDirectionChange("vertical")}
               >
                 <Rows3 size={14} aria-hidden="true" />
-                縦結合
+                縦に並べる
+                {state.direction === "vertical" && <Check size={14} aria-hidden="true" />}
               </button>
               <button
                 type="button"
@@ -708,9 +710,11 @@ export default function Home() {
                 onClick={() => handleDirectionChange("horizontal")}
               >
                 <Columns3 size={14} aria-hidden="true" />
-                横結合
+                横に並べる
+                {state.direction === "horizontal" && <Check size={14} aria-hidden="true" />}
               </button>
             </div>
+            <span className={styles.groupLabel}>画像サイズ</span>
             <div className={styles.sizeGroup}>
               <div className={styles.directionGroup}>
                 <button
@@ -719,7 +723,8 @@ export default function Home() {
                   aria-pressed={state.sizeMode === "original"}
                   onClick={() => handleSizeModeChange("original")}
                 >
-                  原寸
+                  元のサイズ
+                  {state.sizeMode === "original" && <Check size={14} aria-hidden="true" />}
                 </button>
                 <button
                   type="button"
@@ -727,7 +732,8 @@ export default function Home() {
                   aria-pressed={state.sizeMode === "fitWidth"}
                   onClick={() => handleSizeModeChange("fitWidth")}
                 >
-                  幅揃え
+                  幅を揃える
+                  {state.sizeMode === "fitWidth" && <Check size={14} aria-hidden="true" />}
                 </button>
                 <button
                   type="button"
@@ -735,7 +741,8 @@ export default function Home() {
                   aria-pressed={state.sizeMode === "fitHeight"}
                   onClick={() => handleSizeModeChange("fitHeight")}
                 >
-                  高さ揃え
+                  高さを揃える
+                  {state.sizeMode === "fitHeight" && <Check size={14} aria-hidden="true" />}
                 </button>
                 <button
                   type="button"
@@ -743,7 +750,8 @@ export default function Home() {
                   aria-pressed={state.sizeMode === "custom"}
                   onClick={() => handleSizeModeChange("custom")}
                 >
-                  カスタム
+                  サイズを指定
+                  {state.sizeMode === "custom" && <Check size={14} aria-hidden="true" />}
                 </button>
               </div>
               {state.sizeMode === "custom" && (
@@ -779,40 +787,6 @@ export default function Home() {
                   onChange={handleBackgroundChange}
                 />
               </label>
-            </div>
-            <div className={styles.sizeGroup}>
-              <div className={styles.directionGroup}>
-                <button
-                  type="button"
-                  className={styles.directionButton}
-                  aria-pressed={state.format === "png"}
-                  onClick={() => handleFormatChange("png")}
-                >
-                  PNG
-                </button>
-                <button
-                  type="button"
-                  className={styles.directionButton}
-                  aria-pressed={state.format === "jpeg"}
-                  onClick={() => handleFormatChange("jpeg")}
-                >
-                  JPEG
-                </button>
-              </div>
-              {state.format === "jpeg" && (
-                <label className={styles.sizeInputLabel}>
-                  JPEG品質
-                  <input
-                    type="number"
-                    min={0.01}
-                    max={1}
-                    step={0.01}
-                    className={styles.sizeInput}
-                    defaultValue={state.jpegQuality}
-                    onChange={handleJpegQualityChange}
-                  />
-                </label>
-              )}
             </div>
           </section>
           <section className={styles.section}>
@@ -855,14 +829,57 @@ export default function Home() {
               </p>
             )}
             {outputSize && (
-              <p className={styles.outputInfo}>
-                出力サイズ: {outputSize.width} × {outputSize.height}px(
-                {(outputSize.width * outputSize.height).toLocaleString("en-US")}px)
-              </p>
+              <>
+                <p className={styles.outputInfo}>
+                  出力サイズ: 幅{outputSize.width} × 高さ{outputSize.height}px
+                </p>
+                <p className={styles.outputPixelCount}>
+                  {/* 万画素表示は10,000px未満だと丸めで0万画素になり誤解を招くため、その場合は実数pxで表示する */}
+                  総画素数:{" "}
+                  {outputSize.width * outputSize.height >= 10000
+                    ? `${Math.round((outputSize.width * outputSize.height) / 10000)}万画素`
+                    : `${(outputSize.width * outputSize.height).toLocaleString("en-US")}px`}
+                </p>
+              </>
             )}
           </section>
           <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>書き出し</h2>
+            <h2 className={styles.sectionTitle}>保存・コピー</h2>
+            <div className={styles.sizeGroup}>
+              <div className={styles.directionGroup}>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.format === "png"}
+                  onClick={() => handleFormatChange("png")}
+                >
+                  PNG
+                </button>
+                <button
+                  type="button"
+                  className={styles.directionButton}
+                  aria-pressed={state.format === "jpeg"}
+                  onClick={() => handleFormatChange("jpeg")}
+                >
+                  JPEG
+                </button>
+              </div>
+              {state.format === "jpeg" && (
+                <label className={styles.sizeInputLabel}>
+                  JPEG品質
+                  <input
+                    type="number"
+                    min={0.01}
+                    max={1}
+                    step={0.01}
+                    className={styles.sizeInput}
+                    defaultValue={state.jpegQuality}
+                    onChange={handleJpegQualityChange}
+                  />
+                </label>
+              )}
+            </div>
+            <p className={styles.copyNote}>コピーはPNG形式です</p>
             {copyStatus && (
               <p aria-live="polite" className={styles.status}>
                 {copyStatus === "copied"

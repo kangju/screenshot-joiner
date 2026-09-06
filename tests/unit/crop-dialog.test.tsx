@@ -154,7 +154,7 @@ describe("CropDialog", () => {
     // 読み込んでいるため、インスタンス化はマイクロタスク1回分遅れる
     await waitForCropperReady();
 
-    await user.click(screen.getByRole("button", { name: "決定" }));
+    await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
 
     // 表示は0.4倍(長辺1200を480に収める)されているため、選択範囲(表示座標)を
     // 0.4で割った値が元画像のピクセル座標になる
@@ -230,7 +230,7 @@ describe("CropDialog", () => {
     render(<CropDialog item={makeItem()} onConfirm={onConfirm} onCancel={jest.fn()} onReset={jest.fn()} />);
     await waitForCropperReady();
 
-    await user.click(screen.getByRole("button", { name: "決定" }));
+    await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
 
     // 実測幅240pxから逆算した倍率は240/1200=0.2。選択範囲(表示座標)をその
     // 実測倍率で割った値が元画像のピクセル座標になる(0.4だと誤った値になる)
@@ -243,8 +243,8 @@ describe("CropDialog", () => {
     await waitForCropperReady();
 
     // 表示座標(20,40,80,120)を0.4で割った元画像ピクセル座標
-    expect(screen.getByLabelText("X(px)")).toHaveValue(50);
-    expect(screen.getByLabelText("Y(px)")).toHaveValue(100);
+    expect(screen.getByLabelText("左から(px)")).toHaveValue(50);
+    expect(screen.getByLabelText("上から(px)")).toHaveValue(100);
     expect(screen.getByLabelText("幅(px)")).toHaveValue(200);
     expect(screen.getByLabelText("高さ(px)")).toHaveValue(300);
   });
@@ -263,7 +263,7 @@ describe("CropDialog", () => {
     // 入力(元画像ピクセル座標)は表示スケール(0.4)を掛けて選択範囲に反映される
     expect(selectionState.width).toBeCloseTo(200);
 
-    await user.click(screen.getByRole("button", { name: "決定" }));
+    await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
 
     expect(onConfirm).toHaveBeenCalledWith("first", { x: 50, y: 100, width: 500, height: 300 });
   });
@@ -282,7 +282,7 @@ describe("CropDialog", () => {
     expect(widthInput).toHaveValue(0);
     expect(selectionState.width).toBe(80);
 
-    await user.click(screen.getByRole("button", { name: "決定" }));
+    await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
 
     expect(onConfirm).not.toHaveBeenCalled();
     expect(await screen.findByRole("alert")).toHaveTextContent("有効な範囲を指定してください");
@@ -297,11 +297,11 @@ describe("CropDialog", () => {
     render(<CropDialog item={makeItem()} onConfirm={onConfirm} onCancel={jest.fn()} onReset={jest.fn()} />);
     await waitForCropperReady();
 
-    const xInput = screen.getByLabelText("X(px)");
+    const xInput = screen.getByLabelText("左から(px)");
     await user.clear(xInput);
     await user.type(xInput, "1100");
 
-    await user.click(screen.getByRole("button", { name: "決定" }));
+    await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
 
     expect(onConfirm).not.toHaveBeenCalled();
     expect(await screen.findByRole("alert")).toHaveTextContent("有効な範囲を指定してください");
@@ -314,15 +314,15 @@ describe("CropDialog", () => {
     render(<CropDialog item={makeItem()} onConfirm={onConfirm} onCancel={jest.fn()} onReset={jest.fn()} />);
     await waitForCropperReady();
 
-    expect(screen.getByLabelText("X(px)")).toHaveValue(50);
+    expect(screen.getByLabelText("左から(px)")).toHaveValue(50);
 
     // ドラッグやキーボード矢印キーでの操作をシミュレートする(数値入力欄を
     // 経由しない、Cropper内部からの直接的な変更)
     simulateSelectionChange({ x: 40, y: 40, width: 80, height: 120 });
 
-    await waitFor(() => expect(screen.getByLabelText("X(px)")).toHaveValue(100));
+    await waitFor(() => expect(screen.getByLabelText("左から(px)")).toHaveValue(100));
 
-    await user.click(screen.getByRole("button", { name: "決定" }));
+    await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
 
     expect(onConfirm).toHaveBeenCalledWith("first", { x: 100, y: 100, width: 200, height: 300 });
   });
@@ -347,7 +347,7 @@ describe("CropDialog", () => {
 
     render(<CropDialog item={makeItem()} onConfirm={onConfirm} onCancel={jest.fn()} onReset={onReset} />);
 
-    await user.click(screen.getByRole("button", { name: "リセット" }));
+    await user.click(screen.getByRole("button", { name: "トリミングを解除" }));
 
     expect(onReset).toHaveBeenCalledWith("first");
     expect(onConfirm).not.toHaveBeenCalled();
@@ -364,5 +364,62 @@ describe("CropDialog", () => {
     unmount();
 
     expect(destroySpy).toHaveBeenCalled();
+  });
+
+  it("orders the numeric fields as 左から → 上から → 幅 → 高さ (2列×2段のレイアウト意図の間接的な確認)", async () => {
+    render(<CropDialog item={makeItem()} onConfirm={jest.fn()} onCancel={jest.fn()} onReset={jest.fn()} />);
+
+    await waitForCropperReady();
+
+    // DOM順に取得したspinbutton群が、意図した並び(左から/上から/幅/高さ)と
+    // 同じ要素を同じ順序で指しているかを確認する
+    expect(screen.getAllByRole("spinbutton")).toEqual([
+      screen.getByLabelText("左から(px)"),
+      screen.getByLabelText("上から(px)"),
+      screen.getByLabelText("幅(px)"),
+      screen.getByLabelText("高さ(px)"),
+    ]);
+  });
+
+  it("shows guidance text telling the user to drag the selection to choose the area to keep", async () => {
+    render(<CropDialog item={makeItem()} onConfirm={jest.fn()} onCancel={jest.fn()} onReset={jest.fn()} />);
+
+    await waitForCropperReady();
+
+    expect(screen.getByText("枠を動かして、残す範囲を選んでください")).toBeInTheDocument();
+  });
+
+  it("traps focus inside the dialog: Tab on the last focusable element wraps to the first", async () => {
+    const user = userEvent.setup();
+
+    render(<CropDialog item={makeItem()} onConfirm={jest.fn()} onCancel={jest.fn()} onReset={jest.fn()} />);
+    await waitForCropperReady();
+
+    const firstInput = screen.getByLabelText("左から(px)");
+    const confirmButton = screen.getByRole("button", { name: "切り抜きを適用" });
+
+    confirmButton.focus();
+    expect(confirmButton).toHaveFocus();
+
+    await user.tab();
+
+    expect(firstInput).toHaveFocus();
+  });
+
+  it("traps focus inside the dialog: Shift+Tab on the first focusable element wraps to the last", async () => {
+    const user = userEvent.setup();
+
+    render(<CropDialog item={makeItem()} onConfirm={jest.fn()} onCancel={jest.fn()} onReset={jest.fn()} />);
+    await waitForCropperReady();
+
+    const firstInput = screen.getByLabelText("左から(px)");
+    const confirmButton = screen.getByRole("button", { name: "切り抜きを適用" });
+
+    firstInput.focus();
+    expect(firstInput).toHaveFocus();
+
+    await user.tab({ shift: true });
+
+    expect(confirmButton).toHaveFocus();
   });
 });

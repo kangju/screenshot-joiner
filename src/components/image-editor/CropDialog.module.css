@@ -42,8 +42,8 @@
 }
 
 .coordInputs {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
 }
 
@@ -53,6 +53,12 @@
   gap: 0.4rem;
   font-size: var(--text-caption);
   color: var(--color-text-muted);
+}
+
+.guidance {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--color-text-faint);
 }
 
 .coordInput {

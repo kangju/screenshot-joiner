@@ -18,7 +18,8 @@ entry.
 ## Current status (the one section of this file that gets edited in place, not appended to)
 
 - Completed: Phase 0 through Phase 6 (all P0-xx through P6-xx behaviors),
-  plus the post-release Cloudflare Workers static-assets deploy fix.
+  plus the post-release Cloudflare Workers static-assets deploy fix and
+  P5-06 (timestamped download filename).
 - Open residual risks: no keyboard focus trap in the crop dialog (Tab can
   still reach elements behind the overlay); ZIP CRC-32/encryption is not
   verified by parsing the central directory — corrupted/encrypted entries
@@ -638,3 +639,28 @@ Residual risk: the actual live `wrangler deploy` behavior against this config ha
 - Residual risk: existing 53 pre-index log entries left as-is (archiving
   needs user judgment); `docs/Question.md`'s P4-04 conclusion remains
   tentative/accepted-with-known-gap, not fully closed.
+
+### 2026-09-06 — P5-06 Timestamped download filename
+
+- Requirement: P5-06 (post-release addition, Issue #9) — downloaded
+  filenames must include a timestamp in the browsing client's local
+  timezone so repeated same-day downloads don't overwrite each other
+- RED: `download.test.ts` expected an exported `buildTimestampedFilename`
+  that didn't exist; `page.test.tsx` expected `anchor.download` to match
+  `/^joined-image-\d{8}-\d{6}\.(png|jpg)$/` instead of the hardcoded
+  `joined-image.png`/`.jpg`
+- Change: added `buildTimestampedFilename(baseName, extension, date =
+  new Date())` to `src/lib/download.ts`, using `Date`'s local (not UTC)
+  getters and zero-padding; wired it into all three `downloadBlob` call
+  sites in `src/app/page.tsx` (PNG download, JPEG download, and the
+  clipboard-copy-failure PNG fallback)
+- Verification: reviewer's first pass found a Major gap — only 1 of the 3
+  call sites had an end-to-end `anchor.download` assertion, so a
+  regression on the other two paths could pass undetected (exactly the
+  failure mode `docs/ACCEPTANCE_CRITERIA.md`'s "Verification perspective"
+  warns about); test_writer added the missing two assertions, re-review
+  APPROVEd
+- Full checks: `npm test -- --runInBand` (192/192), `npm run typecheck`
+  (clean), `npm run lint` (clean), `npm run build` (static export succeeds)
+- Residual risk: none identified
+- Commit: a30dd98

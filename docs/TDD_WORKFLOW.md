@@ -4,7 +4,7 @@
 
 | Agent | Writes | Must not write | Purpose |
 | --- | --- | --- | --- |
-| `commander` | Nothing except `docs/TDD_LOG.md` entries | Source and test files | Pick the next batch from `docs/IMPLEMENTATION_PLAN.md`, partition it into parallel lanes by file ownership, dispatch one pipeline per lane, then serialize the shared-file steps (log, full check) once lanes finish |
+| `commander` | Nothing except `docs/TDD_LOG.md` entries | Everything else | Pick the next batch from `docs/IMPLEMENTATION_PLAN.md`, partition it into parallel lanes by file ownership, dispatch one pipeline per lane, then serialize the shared-file steps (log, full check) once lanes finish |
 | `test_writer` | Tests and test-only fixtures | Production code | Express one behavior and prove RED |
 | `implementer` | Production code | Tests | Make the smallest change and prove GREEN |
 | `reviewer` | Nothing | All files | Review tests and code; approve or reject. For an independent external opinion at a batch checkpoint or on user request, use the `codex-review` skill instead of (or alongside) self-review — not every cycle, since it spends the user's own Codex quota |

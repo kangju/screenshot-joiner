@@ -587,9 +587,11 @@ Residual risk: the actual live `wrangler deploy` behavior against this config ha
   reading it whole); restructured `docs/Question.md` as conclusion-first
   with folded history; trimmed `docs/TDD_WORKFLOW.md`'s 12-step protocol,
   which duplicated its two diagrams; added a full-check reuse note;
-  compressed `create-pr`'s incident prose; fixed stale "Cloudflare Pages"
-  mentions (now Workers static assets) and other doc contradictions;
-  deleted the sequential-only `prompts/START.md`.
+  compressed `create-pr`'s incident prose; fixed `docs/ARCHITECTURE.md`'s
+  and `docs/IMPLEMENTATION_PLAN.md`'s stale "Cloudflare Pages" mentions (now
+  Workers static assets — older entries in this log keep the old wording,
+  unchanged per append-only) and other doc contradictions; deleted the
+  sequential-only `prompts/START.md`.
 - Review: `codex-review` skill, two rounds (76→88/100) — fixed an
   overstated `docs/Question.md` claim, a misplaced `Residual risk` line, and
   stale/contradictory docs. GitHub Copilot's PR review then flagged a broken

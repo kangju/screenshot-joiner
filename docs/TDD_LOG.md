@@ -606,29 +606,17 @@ its own wording.
 
 ### 2026-09-06 — codex-review round on the doc-token-reduction change (76→88), and fixes
 
-Scored `codex-review` skill run (separate from the pre-implementation
-brainstorm above) over the working-tree diff of the previous entry. Round 1:
-76/100 — confirmed the two factual rewrites were accurate, but found: the
-`docs/Question.md` P4-04 conclusion overstated certainty as "verified" when
-the linked history says the rejection guarantee is unimplemented; the new
-log entry had been spliced into the middle of the prior (Cloudflare) entry,
-stranding that entry's `Residual risk` line after the new entry; a stale
-`docs/IMPLEMENTATION_PLAN.md` "Cloudflare Pages" mention; `README.md`'s
-"3エージェントは同時にコードを書かず" contradicted the parallel-lane
-workflow; `full-check`'s new reuse note claimed a "GREEN" checkpoint that
-`TDD_WORKFLOW.md` explicitly rules out; `TDD_WORKFLOW.md`'s role table said
-commander "Writes: Nothing" while the text has it append log entries. Fixed
-all of these. Round 2: 88/100 — confirmed the fixes, plus two smaller carry-
-overs fixed here too: `full-check`'s "Reporting" section still said GREEN
-step (not "after reviewer approval"); `README.md`'s "AGENTS.mdをそのまま
-使用してください" still invited re-pasting the auto-loaded file.
+Scored `codex-review` skill run over the previous entry's diff (separate
+from the pre-implementation brainstorm above). Round 1: 76/100 — one
+overstated claim in `docs/Question.md`, one structural bug in this log (an
+entry spliced into the wrong place), a few stale/contradictory doc mentions,
+and one skill-file inaccuracy; all fixed. Round 2: 88/100 — confirmed the
+fixes, plus two smaller carry-overs fixed in the same pass. Play-by-play in
+PR #10's description and commit history, not here.
 
 Full checks: test 189/189, typecheck clean, lint clean, build succeeds —
 docs/skill-only change, no source touched.
 
 Files: `docs/Question.md`, `docs/TDD_LOG.md`, `docs/IMPLEMENTATION_PLAN.md`,
 `README.md`, `.claude/skills/full-check/SKILL.md`, `docs/TDD_WORKFLOW.md`
-Residual risk: none newly identified; the two "一部修正" items Codex's
-round-2 pass still listed as open (further compressing this log entry
-itself, and generalizing "append-only" to say only history entries qualify)
-were judged low-value relative to their cost and left as-is.
+Residual risk: none.

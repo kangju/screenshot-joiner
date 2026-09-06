@@ -1,12 +1,12 @@
 # TDD Log
 
-Append one entry only after a completed loop. This file is append-only and
-grows without bound — do not read it in full for routine work. Read the
-index below for current status; search by requirement ID (e.g. `grep "P3-03"
-docs/TDD_LOG.md`) and read only the matching entry when you need history for
-a specific past decision.
+Append one entry only after a completed loop. The dated entries below are
+append-only and grow without bound — do not read them in full for routine
+work. Read the "Current status" index below instead; search by requirement
+ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only the matching entry
+when you need history for a specific past decision.
 
-## Current status (update this section, not the entries below, as status changes)
+## Current status (the one section of this file that gets edited in place, not appended to)
 
 - Completed: Phase 0 through Phase 6 (all P0-xx through P6-xx behaviors),
   plus the post-release Cloudflare Workers static-assets deploy fix.

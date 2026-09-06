@@ -36,7 +36,7 @@ For each bounded behavior, the primary agent runs agents sequentially; never ove
 4. `reviewer` returns `APPROVE` or findings tagged `test_writer`/`implementer`. For an independent external opinion at a batch checkpoint or on user request, use the `codex-review` skill instead of (or in addition to) self-review — not every cycle, since it spends the user's own Codex quota.
 5. Route findings and repeat. Stop after 3 review rounds and ask the user.
 
-Do not weaken tests to get GREEN. Reviewer never edits. Log approved cycles in `docs/TDD_LOG.md` — it is append-only and large; read only its "Current status" section plus any entry you grep for by requirement ID, never the whole file.
+Do not weaken tests to get GREEN. Reviewer never edits. Log approved cycles in `docs/TDD_LOG.md` — its dated entries are append-only and large; read only its "Current status" section (which you keep up to date in place, not append to) plus any entry you grep for by requirement ID, never the whole file.
 
 When a batch has multiple independent behaviors (disjoint files), the primary agent acts as **commander**: partition the batch into parallel lanes and dispatch one test_writer→implementer→reviewer pipeline per lane concurrently. Full protocol, lane rules, and how this maps to the Workflow tool: `docs/TDD_WORKFLOW.md`.
 

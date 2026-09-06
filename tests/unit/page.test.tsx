@@ -1540,6 +1540,51 @@ describe("project scaffold", () => {
     }
   });
 
+  it("shows the exact pixel count instead of rounding to 0万画素 when the output is smaller than 10,000px total (Copilot review on #36)", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = (width: number, height: number) =>
+      ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
+    const firstBitmap = makeBitmap(50, 25);
+    const secondBitmap = makeBitmap(50, 25);
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "first"], "first.png", { type: "image/png" }),
+        new File([png, "second"], "second.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("second.png");
+
+      // 原寸: 50x25を2枚縦に積んだ幅50・高さ50、総画素数2,500(10,000未満)
+      await waitFor(() =>
+        expect(screen.getByText("出力サイズ: 幅50 × 高さ50px")).toBeInTheDocument(),
+      );
+      await waitFor(() => expect(screen.getByText("総画素数: 2,500px")).toBeInTheDocument());
+      expect(screen.queryByText(/万画素/)).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("labels each button group and marks the pressed size-mode button with a checkmark icon (issue #20)", () => {
     render(<Home />);
 

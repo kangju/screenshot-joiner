@@ -281,6 +281,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 「保存・コピー」区画の補足説明(コピー形式の注記)用。
+   outputPixelCountと見た目は同じだが、総画素数表示とは無関係のため
+   クラスを分けて意味を独立させる */
+.copyNote {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--color-text-faint);
+}
+
 .zipStatus {
   display: flex;
   align-items: center;

@@ -834,7 +834,11 @@ export default function Home() {
                   出力サイズ: 幅{outputSize.width} × 高さ{outputSize.height}px
                 </p>
                 <p className={styles.outputPixelCount}>
-                  総画素数: {Math.round((outputSize.width * outputSize.height) / 10000)}万画素
+                  {/* 万画素表示は10,000px未満だと丸めで0万画素になり誤解を招くため、その場合は実数pxで表示する */}
+                  総画素数:{" "}
+                  {outputSize.width * outputSize.height >= 10000
+                    ? `${Math.round((outputSize.width * outputSize.height) / 10000)}万画素`
+                    : `${(outputSize.width * outputSize.height).toLocaleString("en-US")}px`}
                 </p>
               </>
             )}
@@ -875,7 +879,7 @@ export default function Home() {
                 </label>
               )}
             </div>
-            <p className={styles.outputPixelCount}>コピーはPNG形式です</p>
+            <p className={styles.copyNote}>コピーはPNG形式です</p>
             {copyStatus && (
               <p aria-live="polite" className={styles.status}>
                 {copyStatus === "copied"

@@ -54,14 +54,62 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
 
   // ダイアログを開いたときにフォーカスをダイアログ内へ移し、閉じたときに
   // 開く前にフォーカスしていた要素(一覧のトリミングボタン等)へ戻す。
-  // 完全なフォーカストラップ(Tabで背景要素へ移動できないようにする)までは
-  // 実装していない(将来的な改善候補)。
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     panelRef.current?.focus();
 
     return () => {
       previouslyFocused?.focus();
+    };
+  }, []);
+
+  // パネル内でTabキーによるフォーカス移動を循環させる(背景要素へ
+  // フォーカスが漏れないようにするフォーカストラップ)。上記の初期フォーカス・
+  // 復帰処理とは独立した別の関心事のため、別のuseEffectとして分離する。
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const panel = panelRef.current;
+
+      if (!panel) {
+        return;
+      }
+
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLElement>(
+          'button, input, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !("disabled" in element && element.disabled));
+
+      if (focusable.length === 0) {
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey) {
+        // 開いた直後はtabIndex={-1}のパネル自身にフォーカスがあり(上の
+        // useEffect参照)、これはfocusableの一覧に含まれない。この状態から
+        // Shift+Tabすると素通りして背景へフォーカスが漏れるため、パネル自身も
+        // 「先頭にいる」ものとして扱い、末尾要素へ折り返す
+        if (document.activeElement === first || document.activeElement === panel) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
@@ -283,12 +331,13 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
         <h2 id={titleId} className={styles.title}>
           トリミング: {item.name}
         </h2>
+        <p className={styles.guidance}>枠を動かして、残す範囲を選んでください</p>
         <div ref={wrapperRef} className={styles.canvasWrapper}>
           <canvas ref={canvasRef} className={styles.canvas} />
         </div>
         <div className={styles.coordInputs}>
           <label className={styles.coordInputLabel}>
-            X(px)
+            左から(px)
             <input
               type="number"
               min={0}
@@ -298,7 +347,7 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
             />
           </label>
           <label className={styles.coordInputLabel}>
-            Y(px)
+            上から(px)
             <input
               type="number"
               min={0}
@@ -335,13 +384,13 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
         )}
         <div className={styles.actions}>
           <button type="button" className={styles.resetButton} onClick={() => onReset(item.id)}>
-            リセット
+            トリミングを解除
           </button>
           <button type="button" className={styles.cancelButton} onClick={onCancel}>
             キャンセル
           </button>
           <button type="button" className={styles.confirmButton} onClick={handleConfirm}>
-            決定
+            切り抜きを適用
           </button>
         </div>
       </div>

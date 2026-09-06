@@ -48,6 +48,8 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P3-06 Fit all images to a common height.
 - P3-07 Support custom size while preserving aspect ratio.
 - P3-08 Apply gap and background settings.
+- P3-09 Restructure the crop dialog's numeric fields into a 2x2 grid, add
+  guidance text, clarify button wording, and trap focus within the dialog.
 
 ## Phase 4 — ZIP input
 

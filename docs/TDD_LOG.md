@@ -19,22 +19,23 @@ entry.
 
 - Completed: Phase 0 through Phase 6 (all P0-xx through P6-xx behaviors),
   plus the post-release Cloudflare Workers static-assets deploy fix,
-  P5-06 (timestamped download filename), and P2-07/08/09 (ImageListRow
+  P5-06 (timestamped download filename), P2-07/08/09 (ImageListRow
   two-row layout: always-visible filename, contain-fit thumbnails, mobile
-  rotate/crop labels).
-- Open residual risks: no keyboard focus trap in the crop dialog (Tab can
-  still reach elements behind the overlay); ZIP CRC-32/encryption is not
-  verified by parsing the central directory — corrupted/encrypted entries
-  rely on the downstream image-signature/decode check instead, and this
-  substitution has not been confirmed with the user (see `docs/Question.md`
-  P4-04); real Safari and real iOS/Android devices were never available —
-  Phase 6's cross-browser/device checks (P6-01/02/03) used WebKit/Firefox
-  plus touch-viewport emulation as a proxy, reported as such, not as
-  equivalent to real-device QA; the `wrangler.jsonc` static-assets deploy
-  has not yet been confirmed against a real Cloudflare deploy; no dedicated
+  rotate/crop labels), and P3-09 (crop dialog numeric-field regroup and
+  focus trap).
+- Open residual risks: ZIP CRC-32/encryption is not verified by parsing
+  the central directory — corrupted/encrypted entries rely on the
+  downstream image-signature/decode check instead, and this substitution
+  has not been confirmed with the user (see `docs/Question.md` P4-04);
+  real Safari and real iOS/Android devices were never available — Phase 6's
+  cross-browser/device checks (P6-01/02/03) used WebKit/Firefox plus
+  touch-viewport emulation as a proxy, reported as such, not as equivalent
+  to real-device QA; the `wrangler.jsonc` static-assets deploy has not yet
+  been confirmed against a real Cloudflare deploy; no dedicated
   tap-to-expand affordance for a truncated list-row filename (relies on
-  `title`); crop terminology ("トリミング") is inconsistent with Issue #26's
-  suggested wording pending Issue #28's dialog-wide rename.
+  `title`); crop terminology ("トリミング" for the feature/title, "切り抜き"
+  for the dialog's confirm action) intentionally coexists per
+  `docs/REQUIREMENTS.md` FR-04, not a residual gap to close.
 - Last full-check result: all four checks (`test` / `typecheck` / `lint` /
   `build`) green, per the most recent dated entry at the bottom of this
   file.
@@ -672,6 +673,11 @@ Residual risk: the actual live `wrangler deploy` behavior against this config ha
 
 ### 2026-09-06 — P2-07/08/09 ImageListRow two-row layout redesign
 
+⚠️ Correction: see the 2026-09-07 "P3-09 Crop dialog numeric-field regroup
+and focus trap" entry below — Issue #28 did not rename crop terminology
+project-wide; `docs/REQUIREMENTS.md` was found to already tolerate both
+terms by design, so the row and dialog title kept `トリミング`.
+
 - Requirement: P2-07/P2-08/P2-09 (post-release addition, Issues #24/#25/#26
   from a Codex real-screen review) — the list row hid the filename behind
   `visually-hidden` whenever `showControls` was true, which on desktop is
@@ -724,3 +730,53 @@ Residual risk: the actual live `wrangler deploy` behavior against this config ha
   terminology ("トリミング") intentionally left unchanged pending Issue #28,
   which will rename it project-wide together with `CropDialog`
 - Commit: 06ec789
+
+### 2026-09-07 — P3-09 Crop dialog numeric-field regroup and focus trap
+
+- Requirement: P3-09 (post-release addition, Issue #28 from a Codex
+  real-screen review) — the crop dialog's X/Y/width/height fields wrapped
+  awkwardly (width and height ended up on separate rows) and used
+  engineer-facing labels; the dialog had no Tab focus trap, a gap already
+  tracked as an open residual risk in this log
+- Scope decision: the prior P2-07/08/09 entry above predicted this issue
+  would rename crop terminology ("トリミング") to "切り抜き" project-wide.
+  Re-reading `docs/REQUIREMENTS.md` (FR-04) showed both terms already
+  coexist by design — "トリミングできる" for the feature, "切り抜き範囲" for
+  the selected region's data — so this cycle did NOT rename the dialog
+  title or the list row's crop button; only the confirm button became
+  "切り抜きを適用" (applying the specific cutout), matching Issue #28's
+  literal request without forcing a wider rename. See the correction note
+  on the P2-07/08/09 entry above
+- RED: `crop-dialog.test.tsx` expected `左から(px)`/`上から(px)` labels
+  (not `X(px)`/`Y(px)`), the guidance text, `切り抜きを適用`/`トリミングを解除`
+  button names, and — via real `userEvent.tab()`/`userEvent.tab({shift:true})`
+  — that Tab from the last focusable element wraps to the first and vice
+  versa; `page.test.tsx` expected the same button renames
+- Change: relabeled the two position fields and moved `.coordInputs` from
+  `flex-wrap` to an explicit 2-column grid (state field names `x`/`y`
+  unchanged, only label text and layout); added a guidance paragraph
+  above the crop canvas; renamed the confirm/reset buttons (reset's new
+  name `トリミングを解除` matches what `handleCropReset` in `page.tsx`
+  actually does — clears the crop and closes, not just re-widens the
+  selection); added a `document`-level `keydown` effect, separate from the
+  existing open-focus/close-restore effect, that cycles Tab between the
+  panel's first and last focusable elements
+- Verification: `full-check` all green; independently re-verified in a
+  real browser (not just the mocked-cropperjs unit tests) that cropperjs's
+  actual shadow-DOM elements introduce no extra focusable targets inside
+  the panel — the focusable set is exactly the 4 inputs + 3 buttons in
+  both the mock and the real cropper; confirmed the trap doesn't hijack
+  normal in-between Tab presses, cleans up after the dialog closes (Tab
+  from a button outside the dialog behaves normally afterward), and holds
+  at 320px width with no horizontal overflow; `a11y-check` (axe-core) found
+  zero violations with the dialog open, confirmed focus moves in on open
+  and restores to the trigger button on close, and the new guidance text's
+  contrast is 4.83:1 against the dialog background (independently
+  recomputed — passes AA's 4.5:1 but with a tighter margin than this
+  project's other recently-added muted text, worth remembering if the
+  color token changes later)
+- Full checks: `npm test -- --runInBand` (208/208), `npm run typecheck`
+  (clean), `npm run lint` (clean), `npm run build` (static export succeeds)
+- Residual risk: none newly identified; this closes the focus-trap gap
+  that was previously tracked as an open residual risk
+- Commit: 6cea643

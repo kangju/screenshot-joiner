@@ -1254,12 +1254,12 @@ describe("project scaffold", () => {
       await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
       // cropperjsは動的importで読み込むため、インスタンス化がマイクロタスク1回分遅れる
       await waitFor(() => expect(lastCropperInstance).not.toBeNull());
-      await user.click(screen.getByRole("button", { name: "決定" }));
+      await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
       // リセット: ダイアログが閉じる
       await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
-      await user.click(screen.getByRole("button", { name: "リセット" }));
+      await user.click(screen.getByRole("button", { name: "トリミングを解除" }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     } finally {
       if (originalCreateImageBitmap) {
@@ -2568,8 +2568,8 @@ describe("project scaffold", () => {
 
       // クロップ: 開いて決定
       await user.click(screen.getByRole("button", { name: "トリミング: first.png" }));
-      await waitFor(() => expect(screen.getByRole("button", { name: "決定" })).toBeInTheDocument());
-      await user.click(screen.getByRole("button", { name: "決定" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "切り抜きを適用" })).toBeInTheDocument());
+      await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
 
       // ZIP展開
       const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", { type: "application/zip" });

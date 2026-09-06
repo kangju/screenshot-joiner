@@ -26,6 +26,8 @@
   font-size: var(--text-section);
   font-weight: var(--weight-semibold);
   color: var(--color-text);
+  /* 空白のない長いファイル名でもパネル幅からはみ出さないよう、単語の途中でも折り返す */
+  overflow-wrap: anywhere;
 }
 
 .canvasWrapper {

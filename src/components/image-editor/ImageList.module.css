@@ -103,7 +103,9 @@
   gap: 0.6rem;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--color-border);
-  transition: background-color var(--duration-fast) var(--ease-standard);
+  /* transitionはImageListRow.tsx側のインラインstyleで指定する(dnd-kitの
+     並べ替えtransitionと連結する必要があり、インラインが常にこちらを
+     上書きしてしまうため、ここに書いても効かない) */
 }
 
 .row:last-child {

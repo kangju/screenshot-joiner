@@ -163,6 +163,17 @@
   background: var(--color-accent-hover);
 }
 
+/* .directionGroupがoverflow:hiddenのため、既定の外側リング(:focus-visible)は
+   親要素にクリップされて見えなくなる。ここだけ内側にリングを描画する。
+   選択中(紫背景)はリング色が背景に溶け込むため、白系の色に切り替える */
+.directionButton:focus-visible {
+  outline-offset: -3px;
+}
+
+.directionButton[aria-pressed="true"]:focus-visible {
+  outline-color: var(--color-accent-contrast);
+}
+
 .preview {
   display: flex;
   align-items: center;
@@ -188,7 +199,10 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-4);
-  color: var(--color-text-faint);
+  /* --color-text-faintは--color-surface-muted向けに調整された色でコントラスト比
+     4.16:1しかなく、--color-stage背景ではWCAG AA(4.5:1)を満たさない。
+     ここでは十分なコントラストが確認済みの--color-text-mutedを使う */
+  color: var(--color-text-muted);
   text-align: center;
 }
 

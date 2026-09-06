@@ -39,6 +39,10 @@ writers" rule from single files to whole lanes.
   project-wide `full-check` skill run (which touches shared build output
   like `.next/`) happens once, after a lane — or the whole batch — is ready,
   not once per lane in parallel.
+- **Log-entry granularity**: when one lane covers several similar cases
+  (sharing the same calculation logic or the same component), the internal
+  RED→GREEN loop may still run once per case, but the log entry is written
+  once, when the lane finishes (all cases `APPROVE`).
 - Most entries under "High-value pure units" below live in their own file
   with no shared state (natural-sort, image-signature, zip limits, rotation
   dimension math, crop-rect normalization, fit calculations, placement
@@ -92,6 +96,22 @@ This section only adds what they don't show:
   section(s), and (if resuming after a review finding) the last review
   result. Never hand off the full conversation or the full
   `docs/TDD_LOG.md`.
+- **High-risk gate**: if a lane's target either (a) hands DOM/coordinate/event
+  ownership to a third-party UI library (e.g. cropperjs), or (b) parses an
+  untrusted external data format (e.g. ZIP), do the following "oracle
+  verification" before starting `test_writer`:
+  1. Prepare material whose correct answer can be computed independently —
+     e.g. a color-coded image, or a crafted/malformed archive.
+  2. Drive a minimal real interaction and confirm actual behavior: for an
+     (a)-type UI library, its coordinate system, event firing order, and CSS
+     defaults, which requires a real browser (jsdom cannot reproduce them);
+     for a (b)-type data format, its per-encoding behavior, which Node
+     alone can confirm.
+  3. Record the result in 1–2 lines in the relevant module's description in
+     `docs/ARCHITECTURE.md`.
+
+  Write mocks and tests only from this step's result, not from assumptions
+  about the library.
 - RED/GREEN evidence must be inspected by `commander`, not assumed:
   environment errors (broken Jest setup, missing packages) are not RED, and
   a narrow-suite pass is not GREEN if it required weakening a test.

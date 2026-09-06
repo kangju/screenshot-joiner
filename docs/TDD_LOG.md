@@ -1,13 +1,19 @@
 # TDD Log
 
-Append one entry after each completed TDD loop, plus for other significant
-process/infra fixes and external reviews (e.g. the Cloudflare deploy entry
-below) — adapt the template's fields to fit (drop or replace RED/GREEN/
-REVIEW when they don't apply) while keeping each field short. The dated
+Append one entry after each completed lane (a lane may cover several
+similar cases — see `docs/TDD_WORKFLOW.md`'s log-entry granularity rule),
+plus for other significant process/infra fixes and external reviews (e.g.
+the Cloudflare deploy entry below) — pick whichever of the two templates
+below fits, adapting its fields as needed, while keeping each field short.
+The dated
 entries below are append-only and grow without bound — do not read them in
 full for routine work. Read the "Current status" index below instead;
 search by requirement ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only
-the matching entry when you need history for a specific past decision.
+the matching entry when you need history for a specific past decision. The
+one exception to append-only: if a later entry overturns an earlier entry's
+conclusion, prefix the earlier entry's body with a `⚠️ Correction:` line
+pointing to the later entry's date — never delete or rewrite the earlier
+entry.
 
 ## Current status (the one section of this file that gets edited in place, not appended to)
 
@@ -29,21 +35,41 @@ the matching entry when you need history for a specific past decision.
 
 ## Entry template
 
+Use the **normal cycle** template for an ordinary RED→GREEN→REVIEW loop.
+Use the **major incident** template when a later cycle overturns an earlier
+approved conclusion, or a defect surfaces outside the normal unit-test loop
+(external review, browser verification, a production/deploy failure).
+
+### Normal cycle
+
 ```text
 ### YYYY-MM-DD — Requirement ID and behavior
 
-- RED: test names and expected failure
-- GREEN: production change and passing narrow suite
-- REVIEW: APPROVE or findings resolved
-- Full checks: test / typecheck / lint / build
-- Files: changed paths
+- Requirement: acceptance criterion covered
+- RED: key point of the failing test
+- Change: summary of the production change
+- Verification: full-check result or narrow suite result
 - Residual risk: none or concise note
+- Commit: short SHA or PR reference
 ```
 
-Keep each field to 1-2 sentences. A long investigation (e.g. a multi-round
-external review, byte-level verification of a library's behavior) belongs in
-`docs/Question.md` or a commit message, not spelled out here — link to it
-instead of inlining it.
+### Major incident
+
+```text
+### YYYY-MM-DD — Title describing the incident
+
+- Wrong assumption: what was believed and why it was wrong
+- Minimal repro: smallest condition that reproduces the defect
+- Root cause: underlying mechanism
+- Permanent fix: the change that prevents recurrence
+- Regression test: reference to the test that now guards this
+```
+
+Keep each **normal cycle** field to 1-2 sentences; a long investigation
+belongs in `docs/Question.md` or a commit message, not spelled out here —
+link to it instead of inlining it. A **major incident** entry may run
+longer, since the point is to preserve enough of the wrong assumption, the
+repro, and the root cause for a future reader to avoid repeating it.
 
 ### 2026-09-04 — P0-02 Editor state and reducer foundation
 
@@ -345,6 +371,11 @@ Ran `codex exec` (OpenAI Codex CLI, GPT-based, read-only sandbox) as an independ
 - Residual risk: none identified for this behavior
 
 ### 2026-09-05 — P3-03 Crop dialog: open, confirm, cancel, reset (Batch 3-B, cycle 2)
+
+⚠️ Correction: see the 2026-09-05 "Correctness fix found during P3-04
+verification" entry below — the claim that cropperjs v2 reports selection
+coordinates in natural image pixel space with no conversion needed was
+wrong.
 
 - RED: `editor-state.test.ts` had no `items/crop` action; `image-list.test.tsx` found no crop button per row; `crop-dialog.test.tsx` (new) failed because `CropDialog` did not exist; `page.test.tsx` found no dialog opening from the row's crop button
 - GREEN: added an `items/crop` reducer action/case that sets or clears (`null`) a targeted item's `crop` metadata without touching its `blob`/`bitmap` (non-destructive per FR-04); added a crop icon button to `ImageListRow.tsx` (same pattern as the rotate/delete buttons) wired through `ImageList.tsx`'s new `onCrop` prop; built `src/components/image-editor/CropDialog.tsx` using the already-installed `cropperjs` v2 dependency — it draws the item's `ImageBitmap` onto an internal canvas, hands that canvas to `new Cropper(canvas)`, and reads/writes the resulting `CropperSelection`'s `x/y/width/height` directly as the stored `CropRect` (cropperjs v2 reports selection coordinates in the *natural* image pixel space, matching this project's `CropRect` contract exactly, confirmed by browser check below — no coordinate conversion needed); wired `page.tsx` with `croppingItemId` state and confirm/cancel/reset handlers that dispatch `items/crop` (confirm sets the rect, reset sets `null`) and close the dialog

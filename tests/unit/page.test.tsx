@@ -2186,6 +2186,9 @@ describe("project scaffold", () => {
       expect(await screen.findByText("クリップボードにコピーできなかったため、PNGとしてダウンロードしました")).toBeInTheDocument();
       expect(createObjectURLMock).toHaveBeenCalledWith(blob);
       expect(clickSpy).toHaveBeenCalledTimes(1);
+      const anchor = clickSpy.mock.instances[0] as unknown as HTMLAnchorElement;
+      // クリップボードコピー失敗時のPNGフォールバックでもファイル名にタイムスタンプが付与される
+      expect(anchor.download).toMatch(/^joined-image-\d{8}-\d{6}\.png$/);
     } finally {
       clickSpy.mockRestore();
       toBlobSpy.mockRestore();
@@ -2334,6 +2337,73 @@ describe("project scaffold", () => {
     }
   });
 
+  it("downloads the PNG with a timestamped filename to avoid overwriting same-day downloads", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const blob = new Blob(["png-bytes"], { type: "image/png" });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(blob));
+    const objectUrl = "blob:mock-url";
+    const createObjectURLMock = jest.fn(() => objectUrl);
+    const revokeObjectURLMock = jest.fn();
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: createObjectURLMock,
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: revokeObjectURLMock,
+    });
+    const clickSpy = jest
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      const anchor = clickSpy.mock.instances[0] as unknown as HTMLAnchorElement;
+      // 同日中に複数回保存しても上書きされないよう、ファイル名にタイムスタンプが付与される
+      // (Dateをモックせずパターンのみ検証し、実行タイミングによるflakinessを避ける)
+      expect(anchor.download).toMatch(/^joined-image-\d{8}-\d{6}\.png$/);
+    } finally {
+      clickSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      Object.defineProperty(URL, "createObjectURL", {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("switches to JPEG export and downloads with the selected quality and a .jpg filename", async () => {
     const user = userEvent.setup();
     const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
@@ -2372,6 +2442,10 @@ describe("project scaffold", () => {
 
       expect(toBlobSpy).toHaveBeenCalledWith(expect.any(Function), "image/jpeg", 0.5);
       expect(createObjectURLMock).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      const anchor = clickSpy.mock.instances[0] as unknown as HTMLAnchorElement;
+      // JPEG保存でもファイル名にタイムスタンプが付与されることを確認する
+      expect(anchor.download).toMatch(/^joined-image-\d{8}-\d{6}\.jpg$/);
     } finally {
       clickSpy.mockRestore();
       toBlobSpy.mockRestore();

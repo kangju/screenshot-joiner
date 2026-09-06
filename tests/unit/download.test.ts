@@ -1,4 +1,4 @@
-import { downloadBlob } from "@/lib/download";
+import { buildTimestampedFilename, downloadBlob } from "@/lib/download";
 
 describe("downloadBlob", () => {
   it("clicks a temporary anchor pointed at an object URL and revokes it afterward", () => {
@@ -41,5 +41,25 @@ describe("downloadBlob", () => {
         value: originalRevokeObjectURL,
       });
     }
+  });
+});
+
+describe("buildTimestampedFilename", () => {
+  it("appends the local date and time to the base name, zero-padded", () => {
+    // 月は0始まりのため8は9月。ローカル時刻のコンストラクタを使い、
+    // テスト実行環境のタイムゾーンに依存しないようにする
+    const date = new Date(2026, 8, 6, 13, 4, 5);
+
+    const result = buildTimestampedFilename("joined-image", "png", date);
+
+    expect(result).toBe("joined-image-20260906-130405.png");
+  });
+
+  it("zero-pads single-digit month, day, hour, minute, and second", () => {
+    const date = new Date(2026, 0, 5, 3, 4, 5);
+
+    const result = buildTimestampedFilename("joined-image", "jpg", date);
+
+    expect(result).toBe("joined-image-20260105-030405.jpg");
   });
 });

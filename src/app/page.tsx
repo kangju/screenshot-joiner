@@ -13,7 +13,7 @@ import { Clipboard, Columns3, Download, Lock, Rows3 } from "lucide-react";
 
 import { CropDialog } from "@/components/image-editor/CropDialog";
 import { ImageList } from "@/components/image-editor/ImageList";
-import { downloadBlob } from "@/lib/download";
+import { buildTimestampedFilename, downloadBlob } from "@/lib/download";
 import { getTransformedSize, renderTransformedImage } from "@/lib/image-transform";
 import { isSupportedImageFile } from "@/lib/image-signature";
 import { exceedsPixelThreshold } from "@/lib/output-guard";
@@ -604,7 +604,7 @@ export default function Home() {
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            downloadBlob(blob, "joined-image.jpg");
+            downloadBlob(blob, buildTimestampedFilename("joined-image", "jpg"));
           }
         },
         "image/jpeg",
@@ -613,7 +613,7 @@ export default function Home() {
     } else {
       canvas.toBlob((blob) => {
         if (blob) {
-          downloadBlob(blob, "joined-image.png");
+          downloadBlob(blob, buildTimestampedFilename("joined-image", "png"));
         }
       }, "image/png");
     }
@@ -641,7 +641,7 @@ export default function Home() {
       if (result === "copied") {
         setCopyStatus("copied");
       } else {
-        downloadBlob(blob, "joined-image.png");
+        downloadBlob(blob, buildTimestampedFilename("joined-image", "png"));
         setCopyStatus("fallback");
       }
     }, "image/png");

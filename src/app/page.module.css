@@ -124,6 +124,14 @@
   color: var(--color-text);
 }
 
+/* ボタングループの見出し。色だけに頼らずグループの役割を伝えるための
+   軽量なラベル。sizeInputLabelと同じ配色・太さの控えめなスタイル */
+.groupLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+}
+
 .directionGroup {
   display: inline-flex;
   border: 1px solid var(--color-border);
@@ -265,6 +273,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.outputPixelCount {
+  margin: 0;
+  font-size: var(--text-caption);
+  /* outputInfoより補助的な情報のため、さらに控えめな色にする */
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
 .zipStatus {
   display: flex;
   align-items: center;
@@ -326,6 +342,13 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     width: 100%;
+  }
+
+  /* サイズモードのラベルが「原寸」等の2文字から「元のサイズ」等の
+     長い表記+チェックマークに変わったため、はみ出さないよう詰める */
+  .sizeGroup .directionGroup .directionButton {
+    padding-inline: 0.5rem;
+    gap: 0.3rem;
   }
 
   .sizeGroup .directionGroup .directionButton:nth-child(n + 3) {

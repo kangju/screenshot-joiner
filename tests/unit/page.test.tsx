@@ -1451,8 +1451,8 @@ describe("project scaffold", () => {
       await user.upload(screen.getByLabelText("画像を追加"), files);
       await screen.findByText("second.png");
 
-      const verticalButton = screen.getByRole("button", { name: "縦結合" });
-      const horizontalButton = screen.getByRole("button", { name: "横結合" });
+      const verticalButton = screen.getByRole("button", { name: "縦に並べる" });
+      const horizontalButton = screen.getByRole("button", { name: "横に並べる" });
       expect(verticalButton).toHaveAttribute("aria-pressed", "true");
       expect(horizontalButton).toHaveAttribute("aria-pressed", "false");
 
@@ -1518,15 +1518,16 @@ describe("project scaffold", () => {
       await user.upload(screen.getByLabelText("画像を追加"), files);
       await screen.findByText("second.png");
 
-      expect(screen.getByRole("button", { name: "原寸" })).toHaveAttribute("aria-pressed", "true");
-      expect(screen.getByRole("button", { name: "幅揃え" })).toHaveAttribute("aria-pressed", "false");
-      expect(screen.getByRole("button", { name: "高さ揃え" })).toHaveAttribute("aria-pressed", "false");
-      expect(screen.getByRole("button", { name: "カスタム" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "元のサイズ" })).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "幅を揃える" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "高さを揃える" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "サイズを指定" })).toHaveAttribute("aria-pressed", "false");
 
       // 原寸: 200x150を縦に積み、100x50をそのまま積んだ幅200・高さ200
       await waitFor(() =>
-        expect(screen.getByText("出力サイズ: 200 × 200px(40,000px)")).toBeInTheDocument(),
+        expect(screen.getByText("出力サイズ: 幅200 × 高さ200px")).toBeInTheDocument(),
       );
+      await waitFor(() => expect(screen.getByText("総画素数: 4万画素")).toBeInTheDocument());
     } finally {
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {
@@ -1537,6 +1538,25 @@ describe("project scaffold", () => {
         Reflect.deleteProperty(globalThis, "createImageBitmap");
       }
     }
+  });
+
+  it("labels each button group and marks the pressed size-mode button with a checkmark icon (issue #20)", () => {
+    render(<Home />);
+
+    // 各ボタングループの見出しラベルが表示されていること
+    expect(screen.getByText("並べる方向")).toBeInTheDocument();
+    expect(screen.getByText("画像サイズ")).toBeInTheDocument();
+
+    // sizeModeの初期値は"original"(元のサイズ)なので、押下中のボタンは色だけでなく
+    // チェックマークアイコン(SVG)でも判別できる必要がある
+    const pressedButton = screen.getByRole("button", { name: "元のサイズ" });
+    const unpressedButton = screen.getByRole("button", { name: "幅を揃える" });
+
+    expect(pressedButton).toHaveAttribute("aria-pressed", "true");
+    expect(unpressedButton).toHaveAttribute("aria-pressed", "false");
+    expect(pressedButton.querySelectorAll("svg").length).toBeGreaterThan(
+      unpressedButton.querySelectorAll("svg").length,
+    );
   });
 
   it("fits every image to the first image's width when fit-width is selected", async () => {
@@ -1570,7 +1590,7 @@ describe("project scaffold", () => {
       const context = getMockContext(preview as HTMLCanvasElement);
       await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
 
-      await user.click(screen.getByRole("button", { name: "幅揃え" }));
+      await user.click(screen.getByRole("button", { name: "幅を揃える" }));
 
       // 幅揃え: 100x50は最初の画像の幅200に合わせて200x100へ拡大される
       // -> 200x150 + 200x100 を縦に積んで幅200・高さ250(480以下なので等倍)
@@ -1581,8 +1601,9 @@ describe("project scaffold", () => {
       expect(context.drawImage.mock.calls[lastCallIndex - 1]).toEqual([firstBitmap, 0, 0, 200, 150]);
       expect(context.drawImage.mock.calls[lastCallIndex]).toEqual([secondBitmap, 0, 150, 200, 100]);
       await waitFor(() =>
-        expect(screen.getByText("出力サイズ: 200 × 250px(50,000px)")).toBeInTheDocument(),
+        expect(screen.getByText("出力サイズ: 幅200 × 高さ250px")).toBeInTheDocument(),
       );
+      await waitFor(() => expect(screen.getByText("総画素数: 5万画素")).toBeInTheDocument());
     } finally {
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {
@@ -1626,7 +1647,7 @@ describe("project scaffold", () => {
       const context = getMockContext(preview as HTMLCanvasElement);
       await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
 
-      await user.click(screen.getByRole("button", { name: "カスタム" }));
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
       const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
       await user.clear(sizeInput);
       await user.type(sizeInput, "300");
@@ -1634,8 +1655,9 @@ describe("project scaffold", () => {
       // カスタム(縦結合なので幅300指定): 200x150 -> 300x225, 100x50 -> 300x150
       // 合計 幅300・高さ375(480以下なので等倍)
       await waitFor(() =>
-        expect(screen.getByText("出力サイズ: 300 × 375px(112,500px)")).toBeInTheDocument(),
+        expect(screen.getByText("出力サイズ: 幅300 × 高さ375px")).toBeInTheDocument(),
       );
+      await waitFor(() => expect(screen.getByText("総画素数: 11万画素")).toBeInTheDocument());
     } finally {
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {
@@ -2608,5 +2630,33 @@ describe("project scaffold", () => {
         Reflect.deleteProperty(globalThis, "createImageBitmap");
       }
     }
+  });
+
+  it("moves the PNG/JPEG format controls (and JPEG quality input) into the renamed 保存・コピー section, with a copy-format note (issue #21)", async () => {
+    const user = userEvent.setup();
+
+    render(<Home />);
+
+    const exportSection = within(
+      screen.getByRole("heading", { name: "保存・コピー" }).closest("section") as HTMLElement,
+    );
+    const layoutSection = within(
+      screen.getByRole("heading", { name: "結合設定" }).closest("section") as HTMLElement,
+    );
+
+    // PNG/JPEG切り替えボタンとコピー・保存ボタンが同じセクション内にまとまっている
+    expect(exportSection.getByRole("button", { name: "PNG" })).toBeInTheDocument();
+    expect(exportSection.getByRole("button", { name: "JPEG" })).toBeInTheDocument();
+    expect(exportSection.getByRole("button", { name: "PNGとしてコピー" })).toBeInTheDocument();
+    expect(exportSection.getByRole("button", { name: "PNGとして保存" })).toBeInTheDocument();
+    expect(exportSection.getByText("コピーはPNG形式です")).toBeInTheDocument();
+
+    // 結合設定セクションには、もうフォーマット切り替えボタンは存在しない(移動済みであることの確認)
+    expect(layoutSection.queryByRole("button", { name: "PNG" })).not.toBeInTheDocument();
+    expect(layoutSection.queryByRole("button", { name: "JPEG" })).not.toBeInTheDocument();
+
+    // JPEG品質入力も同じセクション内に移動している
+    await user.click(exportSection.getByRole("button", { name: "JPEG" }));
+    expect(exportSection.getByLabelText("JPEG品質")).toBeInTheDocument();
   });
 });

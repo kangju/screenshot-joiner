@@ -146,10 +146,17 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
             <span className={styles.emptyIcon} aria-hidden="true">
               <ImageIcon size={20} />
             </span>
-            <p className={styles.emptyTitle}>この一覧に画像またはZIPをドラッグ&ドロップ</p>
-            <p className={styles.emptyHint}>
-              またはページ上で <kbd className={styles.kbd}>Ctrl+V</kbd>(Mac: <kbd className={styles.kbd}>Cmd+V</kbd>)で貼り付け
-            </p>
+            {isCompact ? (
+              // モバイルはドラッグ&ドロップ操作がしづらいため、「追加」ボタン導線のみ案内する
+              <p className={styles.emptyTitle}>「追加」から画像やZIPを選べます</p>
+            ) : (
+              <>
+                <p className={styles.emptyTitle}>この一覧に画像またはZIPをドラッグ&ドロップ</p>
+                <p className={styles.emptyHint}>
+                  またはページ上で <kbd className={styles.kbd}>Ctrl+V</kbd>(Mac: <kbd className={styles.kbd}>Cmd+V</kbd>)で貼り付け
+                </p>
+              </>
+            )}
           </li>
         </ul>
       ) : (
@@ -196,7 +203,17 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
       )}
       {items.length > 0 && (
         <p className={styles.hint}>
-          ここに画像をドロップ、またはページ上で <kbd className={styles.kbd}>Ctrl+V</kbd>(Mac: <kbd className={styles.kbd}>Cmd+V</kbd>)で貼り付け
+          {isCompact ? (
+            isEditing ? (
+              "左のハンドルを長押しして並べ替え"
+            ) : (
+              "「追加」から画像やZIPを選べます"
+            )
+          ) : (
+            <>
+              ここに画像をドロップ、またはページ上で <kbd className={styles.kbd}>Ctrl+V</kbd>(Mac: <kbd className={styles.kbd}>Cmd+V</kbd>)で貼り付け
+            </>
+          )}
         </p>
       )}
     </div>

@@ -21,8 +21,12 @@ entry.
   plus the post-release Cloudflare Workers static-assets deploy fix,
   P5-06 (timestamped download filename), P2-07/08/09 (ImageListRow
   two-row layout: always-visible filename, contain-fit thumbnails, mobile
-  rotate/crop labels), and P3-09 (crop dialog numeric-field regroup and
-  focus trap).
+  rotate/crop labels), P3-09 (crop dialog numeric-field regroup and
+  focus trap), and GitHub Issues #22/#23/#20/#21 (mobile touch-appropriate
+  guidance copy; output-size dimension/megapixel display split; button
+  group labels, plain-language wording, and non-color pressed-state
+  indicator in 結合設定; PNG/JPEG format controls relocated into the
+  renamed 保存・コピー section).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -780,3 +784,55 @@ terms by design, so the row and dialog title kept `トリミング`.
 - Residual risk: none newly identified; this closes the focus-trap gap
   that was previously tracked as an open residual risk
 - Commit: 6cea643
+
+### 2026-09-07 — Issue #22: mobile touch-appropriate guidance copy
+
+- Requirement: GitHub Issue #22 (優先度1) — replace PC-oriented
+  drag&drop/Ctrl+V guidance in `ImageList.tsx` with touch-appropriate copy
+  on compact (`isCompact`, ≤760px) viewports, leaving desktop unchanged
+- RED: `image-list.test.tsx` expected `「追加」から画像やZIPを選べます` on
+  mobile empty-list and mobile filled-not-editing states, and
+  `左のハンドルを長押しして並べ替え` on mobile filled-editing state, with the
+  old drag&drop/Ctrl+V text absent in those cases; a desktop regression
+  guard confirmed the original copy stays unchanged
+- Change: two conditional-rendering branches on `isCompact`/`isEditing` in
+  the empty-list block and the filled-list footer hint; no new state, no
+  change to drag/drop/sort logic; desktop JSX left byte-identical
+- Verification: `npx jest tests/unit/image-list.test.tsx` (23/23),
+  `npx jest tests/unit/page.test.tsx` (45/45, confirming no regression in
+  the suite that also renders `ImageList`), `npx tsc --noEmit` clean
+- Residual risk: none newly identified
+- Commit: pending (batch PR covering Issues #20–#23)
+
+### 2026-09-07 — Issues #23, #20, #21: 結合設定/書き出し欄のUI分かりやすさ改善(page.tsxレーン)
+
+- Requirement: 3件のGitHub Issue(優先度1/優先度3、いずれも`page.tsx`/`page.module.css`を
+  共有するため同一レーンで直列に実施)
+  - #23: 出力サイズ表記を「出力サイズ: 幅W × 高さHpx」と「総画素数: N万画素」の2行に分離
+  - #20: 「結合設定」内の各ボタングループに見出しラベル(並べる方向/画像サイズ)を追加し、
+    ボタン文言を平易化(縦結合→縦に並べる 等)、選択中ボタンに色以外の判別手段として
+    チェックマークアイコンを追加
+  - #21: PNG/JPEG選択とJPEG品質入力を「結合設定」から「書き出し」(見出しを「保存・コピー」に
+    改名)へ移動し、「コピーはPNG形式です」の補足を追加
+- RED: 各behaviorごとに`page.test.tsx`を先に更新・追加してから実装(#23は出力サイズの
+  分割表記アサーション、#20はボタン名変更+新規ラベル/チェックマークアサーション、#21は
+  `保存・コピー`見出しへのスコープ付きアサーションと`結合設定`側からの不在確認)。3件とも
+  更新直後に`TestingLibraryElementError`による正当なRED、産物コード変更後にGREENへ到達
+  したことを`implementer`が確認済み
+- Change: `outputSize`計算(`useMemo`)自体は変更せず表示のみ2行化+`.outputPixelCount`
+  クラス追加(#23)。ボタン文言・グループ見出し`<span>`(新規`.groupLabel`)・`Check`アイコン
+  (`aria-hidden`付き、アクセシブルネームは変更しない)を追加、420px以下のグリッド余白を
+  微調整(#20)。PNG/JPEGブロックを「結合設定」から「保存・コピー」節の先頭へ丸ごと移設し
+  見出し文言を変更、`state.format`/`state.jpegQuality`とハンドラーは無変更のまま維持(#21)
+- Verification: 各cycle後に`npx jest tests/unit/page.test.tsx`(最終47/47)と
+  `npx jest tests/unit/image-list.test.tsx`(23/23、無関係レーンへの影響なし確認)、
+  `npx tsc --noEmit`(clean)を実行。各cycleをreviewerが個別に`APPROVE`
+- Residual risk: (a) #20の見出し`<span>`はボタングループと`role="group"`/
+  `aria-labelledby`で構造的に関連付けられておらず、視覚的には明確だがスクリーン
+  リーダー上は各ボタン自身のアクセシブルネームのみに依存する(非ブロッキングとして
+  reviewerが承認、将来的な改善候補)。(b) #21で追加した「コピーはPNG形式です」の
+  補足に、意味的に無関係な既存クラス`.outputPixelCount`(#23の総画素数表示向けに
+  命名・コメントされたもの)を再利用しており、将来そのクラスの見た目を変更すると
+  この補足文にも意図せず影響する(非ブロッキングとしてreviewerが承認、専用クラスへ
+  分離するのが望ましい)
+- Commit: pending (batch PR covering Issues #20–#23)

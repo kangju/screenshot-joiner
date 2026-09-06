@@ -5,9 +5,10 @@ description: Push the current branch and open (or update) a GitHub pull request 
 
 # PR作成 (screenshot-joiner)
 
-このプロジェクトのPRは**タイトル・本文ともに日本語**で書く。コミット
-メッセージやコード識別子の英語ルール(AGENTS.md参照)はPR本文には適用
-しない。
+このプロジェクトのPRは**タイトル・本文ともに日本語**で書く(コミット
+メッセージも同様に日本語 — AGENTS.md参照)。コード識別子を英語のままに
+する規則(同じくAGENTS.md参照)はコードそのものの話であり、PR本文の
+地の文には関係しない。
 
 ## 手順
 
@@ -29,10 +30,9 @@ description: Push the current branch and open (or update) a GitHub pull request 
    ```
    fast-forwardできない場合(ローカル`main`が独自に進んでいる場合)は、
    自動でマージせずユーザーに確認する。
-   **これを飛ばすと事故る。** 実際にあった事故: ローカル`main`が直前の
-   PRのマージ前のまま残っていたため、新しいブランチとの差分を取ったら
-   既にマージ済みの34ファイルが紛れ込んだ。`git diff main..HEAD --stat`
-   は必ずこのステップの後に確認する。
+   **これを飛ばすと事故る**(古いローカル`main`との差分に既マージ分の
+   ファイルが紛れ込んだ実例あり)。`git diff main..HEAD --stat`は必ず
+   このステップの後に確認する。
 
 3. **`full-check`スキルを実行する。** test/typecheck/lint/buildが全て
    greenであることを確認してからPRを開く(CLAUDE.mdの「Done」基準)。
@@ -74,11 +74,9 @@ description: Push the current branch and open (or update) a GitHub pull request 
 
 - Codexレビュー(`codex-review`スキル)を経ている場合は、「## Codexレビュー
   での指摘」のような見出しを追加し、指摘内容・スコアの変化・対応を要約
-  する(撤回された指摘があれば、それも明記する)。
-  コミットメッセージ末尾の`Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`
-  はコミット側の話であり、PR本文には含めない。PR本文側の帰属表記は
-  上記テンプレートの`🤖 Generated with [Claude Code](https://claude.com/claude-code)`
-  のみでよい。
+  する(撤回された指摘があれば明記)。
+- 帰属表記はPR本文側では上記テンプレートの`🤖 Generated with [Claude Code]`
+  行のみ(コミット側の`Co-Authored-By:`はPR本文に含めない)。
 
 ## gh pr create の書き方
 

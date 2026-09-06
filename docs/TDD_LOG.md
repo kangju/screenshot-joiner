@@ -1,8 +1,30 @@
 # TDD Log
 
-Append one entry only after a completed loop.
+Append one entry only after a completed loop. This file is append-only and
+grows without bound — do not read it in full for routine work. Read the
+index below for current status; search by requirement ID (e.g. `grep "P3-03"
+docs/TDD_LOG.md`) and read only the matching entry when you need history for
+a specific past decision.
 
-## Template
+## Current status (update this section, not the entries below, as status changes)
+
+- Completed: Phase 0 through Phase 6 (all P0-xx through P6-xx behaviors),
+  plus the post-release Cloudflare Workers static-assets deploy fix.
+- Open residual risks: no keyboard focus trap in the crop dialog (Tab can
+  still reach elements behind the overlay); ZIP CRC-32/encryption is not
+  verified by parsing the central directory — corrupted/encrypted entries
+  rely on the downstream image-signature/decode check instead, and this
+  substitution has not been confirmed with the user (see `docs/Question.md`
+  P4-04); real Safari and real iOS/Android devices were never available —
+  Phase 6's cross-browser/device checks (P6-01/02/03) used WebKit/Firefox
+  plus touch-viewport emulation as a proxy, reported as such, not as
+  equivalent to real-device QA; the `wrangler.jsonc` static-assets deploy
+  has not yet been confirmed against a real Cloudflare deploy.
+- Last full-check result: all four checks (`test` / `typecheck` / `lint` /
+  `build`) green, per the most recent dated entry at the bottom of this
+  file.
+
+## Entry template
 
 ```text
 ### YYYY-MM-DD — Requirement ID and behavior
@@ -14,6 +36,11 @@ Append one entry only after a completed loop.
 - Files: changed paths
 - Residual risk: none or concise note
 ```
+
+Keep each field to 1-2 sentences. A long investigation (e.g. a multi-round
+external review, byte-level verification of a library's behavior) belongs in
+`docs/Question.md` or a commit message, not spelled out here — link to it
+instead of inlining it.
 
 ### 2026-09-04 — P0-02 Editor state and reducer foundation
 
@@ -550,3 +577,58 @@ Full checks: `npm test -- --runInBand`, `npm run typecheck`, `npm run lint`, `np
 
 Files: `wrangler.jsonc` (new), `package.json`, `package-lock.json`
 Residual risk: the actual live `wrangler deploy` behavior against this config has not been observed yet — needs confirmation on the next real Cloudflare deploy.
+
+### 2026-09-06 — Reduce AI-agent doc token usage; fix stale/contradictory docs
+
+Read-only Codex CLI brainstorm (`codex exec -s read-only`, no scoring) on
+the same doc set informed the plan before implementing it. Added a "Current
+status" index to this log (read it + grep by ID, not the whole file); restructured
+`docs/Question.md` with a conclusion line per topic above the folded
+history; trimmed `docs/TDD_WORKFLOW.md`'s 12-step protocol, which duplicated
+its two diagrams; added a full-check reuse note; compressed `create-pr`'s
+incident prose; fixed stale docs (`docs/ARCHITECTURE.md`'s and
+`docs/IMPLEMENTATION_PLAN.md`'s "Cloudflare Pages" → Workers static assets,
+`create-pr`'s commit-language wording); deleted the sequential-only
+`prompts/START.md` and its `README.md` reference; softened `README.md`'s
+"3エージェントは同時にコードを書かず" to lane-scoped wording.
+
+Full checks: test 189/189, typecheck clean, lint clean, build succeeds —
+docs/skill-only change, no source touched.
+
+Files: `AGENTS.md` (`CLAUDE.md` symlink target), `README.md`,
+`docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/Question.md`,
+`docs/TDD_LOG.md`, `docs/TDD_WORKFLOW.md`, `.claude/skills/create-pr/SKILL.md`,
+`.claude/skills/full-check/SKILL.md`, `prompts/START.md` (deleted)
+Residual risk: existing 53 pre-index log entries left as-is (archiving needs
+user judgment, out of scope here); `docs/Question.md`'s P4-04 conclusion is
+a tentative/accepted-with-known-gap decision, not a fully closed one — see
+its own wording.
+
+### 2026-09-06 — codex-review round on the doc-token-reduction change (76→88), and fixes
+
+Scored `codex-review` skill run (separate from the pre-implementation
+brainstorm above) over the working-tree diff of the previous entry. Round 1:
+76/100 — confirmed the two factual rewrites were accurate, but found: the
+`docs/Question.md` P4-04 conclusion overstated certainty as "verified" when
+the linked history says the rejection guarantee is unimplemented; the new
+log entry had been spliced into the middle of the prior (Cloudflare) entry,
+stranding that entry's `Residual risk` line after the new entry; a stale
+`docs/IMPLEMENTATION_PLAN.md` "Cloudflare Pages" mention; `README.md`'s
+"3エージェントは同時にコードを書かず" contradicted the parallel-lane
+workflow; `full-check`'s new reuse note claimed a "GREEN" checkpoint that
+`TDD_WORKFLOW.md` explicitly rules out; `TDD_WORKFLOW.md`'s role table said
+commander "Writes: Nothing" while the text has it append log entries. Fixed
+all of these. Round 2: 88/100 — confirmed the fixes, plus two smaller carry-
+overs fixed here too: `full-check`'s "Reporting" section still said GREEN
+step (not "after reviewer approval"); `README.md`'s "AGENTS.mdをそのまま
+使用してください" still invited re-pasting the auto-loaded file.
+
+Full checks: test 189/189, typecheck clean, lint clean, build succeeds —
+docs/skill-only change, no source touched.
+
+Files: `docs/Question.md`, `docs/TDD_LOG.md`, `docs/IMPLEMENTATION_PLAN.md`,
+`README.md`, `.claude/skills/full-check/SKILL.md`, `docs/TDD_WORKFLOW.md`
+Residual risk: none newly identified; the two "一部修正" items Codex's
+round-2 pass still listed as open (further compressing this log entry
+itself, and generalizing "append-only" to say only history entries qualify)
+were judged low-value relative to their cost and left as-is.

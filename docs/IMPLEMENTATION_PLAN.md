@@ -68,6 +68,6 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P6-02 Test current Firefox and Safari fallbacks.
 - P6-03 Test representative iOS Safari and Android Chrome flows.
 - P6-04 Verify there are no image-bearing network requests.
-- P6-05 Verify static export and Cloudflare Pages configuration.
+- P6-05 Verify static export and Cloudflare Workers static-assets configuration.
 - P6-06 Run accessibility checks and the full completion gate.
 

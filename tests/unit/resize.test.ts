@@ -60,4 +60,9 @@ describe("computeContainScale", () => {
   it("returns exactly 1 when the source already fits the box", () => {
     expect(computeContainScale({ width: 100, height: 50 }, { width: 100, height: 50 })).toBe(1);
   });
+
+  it("returns 0 instead of Infinity/NaN for a zero-width or zero-height source", () => {
+    expect(computeContainScale({ width: 0, height: 50 }, { width: 100, height: 100 })).toBe(0);
+    expect(computeContainScale({ width: 50, height: 0 }, { width: 100, height: 100 })).toBe(0);
+  });
 });

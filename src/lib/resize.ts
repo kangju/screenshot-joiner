@@ -24,5 +24,12 @@ export const fitToHeight = (size: Size, targetHeight: number): Size => {
 };
 
 // 枠(box)にsourceをはみ出さず収める(object-fit: containと同様)ためのスケールを算出する。
-export const computeContainScale = (source: Size, box: Size): number =>
-  Math.min(box.width / source.width, box.height / source.height);
+// sourceの幅または高さが0だと除算でInfinity/NaNになり描画が壊れるため、
+// fitToWidth/fitToHeightと同様に0を安全な値へガードする。
+export const computeContainScale = (source: Size, box: Size): number => {
+  if (source.width === 0 || source.height === 0) {
+    return 0;
+  }
+
+  return Math.min(box.width / source.width, box.height / source.height);
+};

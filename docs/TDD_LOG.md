@@ -1,10 +1,13 @@
 # TDD Log
 
-Append one entry only after a completed loop. The dated entries below are
-append-only and grow without bound — do not read them in full for routine
-work. Read the "Current status" index below instead; search by requirement
-ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only the matching entry
-when you need history for a specific past decision.
+Append one entry after each completed TDD loop, plus for other significant
+process/infra fixes and external reviews (e.g. the Cloudflare deploy entry
+below) — adapt the template's fields to fit (drop or replace RED/GREEN/
+REVIEW when they don't apply) while keeping each field short. The dated
+entries below are append-only and grow without bound — do not read them in
+full for routine work. Read the "Current status" index below instead;
+search by requirement ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only
+the matching entry when you need history for a specific past decision.
 
 ## Current status (the one section of this file that gets edited in place, not appended to)
 

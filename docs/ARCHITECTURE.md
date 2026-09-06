@@ -13,7 +13,7 @@ flowchart LR
     R --> D[PNG / JPEG download]
 ```
 
-Cloudflare Pages serves only the exported HTML, CSS, JavaScript, and local static assets. There is no application server.
+A Cloudflare Worker configured for static assets only (`wrangler.jsonc`, `assets.directory: "./out"`, no `main` script) serves the exported HTML, CSS, JavaScript, and local static assets. There is no application server.
 
 ## Proposed directories
 

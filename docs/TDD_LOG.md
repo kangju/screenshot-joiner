@@ -1,8 +1,33 @@
 # TDD Log
 
-Append one entry only after a completed loop.
+Append one entry after each completed TDD loop, plus for other significant
+process/infra fixes and external reviews (e.g. the Cloudflare deploy entry
+below) — adapt the template's fields to fit (drop or replace RED/GREEN/
+REVIEW when they don't apply) while keeping each field short. The dated
+entries below are append-only and grow without bound — do not read them in
+full for routine work. Read the "Current status" index below instead;
+search by requirement ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only
+the matching entry when you need history for a specific past decision.
 
-## Template
+## Current status (the one section of this file that gets edited in place, not appended to)
+
+- Completed: Phase 0 through Phase 6 (all P0-xx through P6-xx behaviors),
+  plus the post-release Cloudflare Workers static-assets deploy fix.
+- Open residual risks: no keyboard focus trap in the crop dialog (Tab can
+  still reach elements behind the overlay); ZIP CRC-32/encryption is not
+  verified by parsing the central directory — corrupted/encrypted entries
+  rely on the downstream image-signature/decode check instead, and this
+  substitution has not been confirmed with the user (see `docs/Question.md`
+  P4-04); real Safari and real iOS/Android devices were never available —
+  Phase 6's cross-browser/device checks (P6-01/02/03) used WebKit/Firefox
+  plus touch-viewport emulation as a proxy, reported as such, not as
+  equivalent to real-device QA; the `wrangler.jsonc` static-assets deploy
+  has not yet been confirmed against a real Cloudflare deploy.
+- Last full-check result: all four checks (`test` / `typecheck` / `lint` /
+  `build`) green, per the most recent dated entry at the bottom of this
+  file.
+
+## Entry template
 
 ```text
 ### YYYY-MM-DD — Requirement ID and behavior
@@ -14,6 +39,11 @@ Append one entry only after a completed loop.
 - Files: changed paths
 - Residual risk: none or concise note
 ```
+
+Keep each field to 1-2 sentences. A long investigation (e.g. a multi-round
+external review, byte-level verification of a library's behavior) belongs in
+`docs/Question.md` or a commit message, not spelled out here — link to it
+instead of inlining it.
 
 ### 2026-09-04 — P0-02 Editor state and reducer foundation
 
@@ -550,3 +580,30 @@ Full checks: `npm test -- --runInBand`, `npm run typecheck`, `npm run lint`, `np
 
 Files: `wrangler.jsonc` (new), `package.json`, `package-lock.json`
 Residual risk: the actual live `wrangler deploy` behavior against this config has not been observed yet — needs confirmation on the next real Cloudflare deploy.
+
+### 2026-09-06 — Reduce AI-agent doc token usage; fix stale/contradictory docs
+
+- Change: added a "Current status" index to this log (grep by ID instead of
+  reading it whole); restructured `docs/Question.md` as conclusion-first
+  with folded history; trimmed `docs/TDD_WORKFLOW.md`'s 12-step protocol,
+  which duplicated its two diagrams; added a full-check reuse note;
+  compressed `create-pr`'s incident prose; fixed `docs/ARCHITECTURE.md`'s
+  and `docs/IMPLEMENTATION_PLAN.md`'s stale "Cloudflare Pages" mentions (now
+  Workers static assets — older entries in this log keep the old wording,
+  unchanged per append-only) and other doc contradictions; deleted the
+  sequential-only `prompts/START.md`.
+- Review: `codex-review` skill, two rounds (76→88/100) — fixed an
+  overstated `docs/Question.md` claim, a misplaced `Residual risk` line, and
+  stale/contradictory docs. GitHub Copilot's PR review then flagged a broken
+  `grep` code span, ambiguous append-only wording, and this entry being too
+  long for its own stated rule — fixed.
+- Full checks: test 189/189, typecheck clean, lint clean, build succeeds —
+  docs/skill-only change, no source touched.
+- Files: `AGENTS.md` (`CLAUDE.md` symlink target), `README.md`,
+  `docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/Question.md`,
+  `docs/TDD_LOG.md`, `docs/TDD_WORKFLOW.md`,
+  `.claude/skills/create-pr/SKILL.md`, `.claude/skills/full-check/SKILL.md`,
+  `prompts/START.md` (deleted)
+- Residual risk: existing 53 pre-index log entries left as-is (archiving
+  needs user judgment); `docs/Question.md`'s P4-04 conclusion remains
+  tentative/accepted-with-known-gap, not fully closed.

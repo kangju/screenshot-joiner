@@ -10,6 +10,13 @@ order. This skill exists only to save re-typing/re-deriving that sequence
 every TDD cycle — the commands themselves are the source of truth, not this
 file.
 
+`TDD_WORKFLOW.md` and `create-pr` each mention running this gate at their
+own checkpoint (once per lane/batch, after reviewer approval — never at
+GREEN, before review; and again pre-PR). If the last run of this exact
+sequence is still valid — no source, test, dependency, or config change
+since — reuse that result instead of re-running; only re-run after a change
+that could affect its outcome.
+
 ## Run, in order, stopping at the first failure
 
 ```bash
@@ -31,7 +38,7 @@ npm run build
 
 State plainly which of the four passed/failed — don't paste full command
 output unless something failed and the failure detail matters. On full
-green, that's the signal a TDD cycle's GREEN step (or a completed feature)
-is ready to log in `docs/TDD_LOG.md` per its existing template — this skill
-does not write that entry itself, since the log entry requires judgment
-about what changed and why, not a fixed procedure.
+green after reviewer approval, that's the signal the cycle (or a completed
+feature) is ready to log in `docs/TDD_LOG.md` per its existing template —
+this skill does not write that entry itself, since the log entry requires
+judgment about what changed and why, not a fixed procedure.

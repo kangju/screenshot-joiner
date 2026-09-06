@@ -4,7 +4,7 @@
 
 | Agent | Writes | Must not write | Purpose |
 | --- | --- | --- | --- |
-| `commander` | Nothing | All files | Pick the next batch from `docs/IMPLEMENTATION_PLAN.md`, partition it into parallel lanes by file ownership, dispatch one pipeline per lane, then serialize the shared-file steps (log, full check) once lanes finish |
+| `commander` | Nothing except `docs/TDD_LOG.md` entries | Everything else | Pick the next batch from `docs/IMPLEMENTATION_PLAN.md`, partition it into parallel lanes by file ownership, dispatch one pipeline per lane, then serialize the shared-file steps (log, full check) once lanes finish |
 | `test_writer` | Tests and test-only fixtures | Production code | Express one behavior and prove RED |
 | `implementer` | Production code | Tests | Make the smallest change and prove GREEN |
 | `reviewer` | Nothing | All files | Review tests and code; approve or reject. For an independent external opinion at a batch checkpoint or on user request, use the `codex-review` skill instead of (or alongside) self-review — not every cycle, since it spends the user's own Codex quota |
@@ -83,18 +83,20 @@ flowchart TD
 
 ## Primary-agent protocol
 
-1. As `commander`: choose the next batch of small observable behaviors from `docs/IMPLEMENTATION_PLAN.md`.
-2. As `commander`: estimate each behavior's touched files (use `docs/ARCHITECTURE.md`'s directory layout) and partition the batch into parallel-safe lanes (see "Parallel lanes"). A batch of one behavior is just one lane.
-3. For each lane, state its acceptance criteria and relevant files, then run the lane loop below. Independent lanes may run concurrently.
-4. Spawn `test_writer` and wait.
-5. Inspect RED evidence. Do not accept environment errors as RED.
-6. Spawn `implementer` and wait.
-7. Inspect GREEN evidence.
-8. Spawn `reviewer` and wait for `APPROVE` or `REQUEST_CHANGES`. Use the `codex-review` skill instead of/alongside self-review only at a batch checkpoint or on user request.
-9. Route only the review finding to the responsible agent.
-10. Stop after three review cycles if the gate still fails.
-11. As `commander`, once a lane reports `APPROVE`: append its `docs/TDD_LOG.md` entry immediately (one lane at a time — never concurrently, since it's a shared file).
-12. As `commander`, once the whole batch's lanes are done: invoke the `full-check` skill once for the merged result.
+The two diagrams above are the source of truth for the batch/lane sequence.
+This section only adds what they don't show:
+
+- Before starting a lane, `commander` states its acceptance criteria and
+  owned files — this is also the *only* handoff each spawned agent gets:
+  requirement ID, acceptance criteria, owned files, the relevant spec
+  section(s), and (if resuming after a review finding) the last review
+  result. Never hand off the full conversation or the full
+  `docs/TDD_LOG.md`.
+- RED/GREEN evidence must be inspected by `commander`, not assumed:
+  environment errors (broken Jest setup, missing packages) are not RED, and
+  a narrow-suite pass is not GREEN if it required weakening a test.
+- See "Review limit" below for when to stop routing findings back and ask
+  the user instead.
 
 ## Unit-test boundaries
 

@@ -25,10 +25,13 @@ description: Push the current branch and open (or update) a GitHub pull request 
    git log --oneline main -1
    ```
    ローカル`main`が`origin/main`より遅れていたら、必ず追従してから次に
-   進む:
+   進む(ローカル`main`に分岐したコミットが残っていてマージコミットが
+   作られないよう、fast-forwardのみに限定する):
    ```bash
-   git checkout main && git pull origin main && git checkout -
+   git checkout main && git pull --ff-only origin main && git checkout -
    ```
+   fast-forwardできない場合(ローカル`main`が独自に進んでいる場合)は、
+   自動でマージせずユーザーに確認する。
    **これを飛ばすと事故る。** 実際にあった事故: ローカル`main`が直前の
    PRのマージ前のまま残っていたため、新しいブランチとの差分を取ったら
    既にマージ済みの34ファイルが紛れ込んだ。`git diff main..HEAD --stat`
@@ -47,12 +50,13 @@ description: Push the current branch and open (or update) a GitHub pull request 
    git push -u origin <branch>   # 初回
    git push                       # 2回目以降
    ```
-   force pushやmainへの直接pushは、既存のgit safety protocol通りユーザー
-   の明示的な指示がない限り行わない。
+   force pushやmainへの直接pushは、共有履歴を書き換えたり他者の作業を
+   壊しうる操作であるため、ユーザーの明示的な指示がない限り行わない。
 
-6. **`gh pr create`でPRを作成する。** 既に同じブランチでPRが存在し
-   マージ/クローズ済みの場合(`gh pr view <番号> --json state`で確認)は
-   新しいPRになる。タイトルは70文字目安、詳細は本文に書く。
+6. **`gh pr create`でPRを作成する。** まず`gh pr view`(引数なし。現在
+   チェックアウトしているブランチに紐づくPRを見る)でPRの有無・状態を
+   確認する。存在しない、またはマージ/クローズ済みの場合のみ新しいPRを
+   作成する。タイトルは70文字目安、詳細は本文に書く。
 
 ## PR本文テンプレート(日本語)
 

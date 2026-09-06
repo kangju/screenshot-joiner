@@ -802,7 +802,7 @@ terms by design, so the row and dialog title kept `トリミング`.
   `npx jest tests/unit/page.test.tsx` (45/45, confirming no regression in
   the suite that also renders `ImageList`), `npx tsc --noEmit` clean
 - Residual risk: none newly identified
-- Commit: pending (batch PR covering Issues #20–#23)
+- Commit: 4a32447 (PR #36)
 
 ### 2026-09-07 — Issues #23, #20, #21: 結合設定/書き出し欄のUI分かりやすさ改善(page.tsxレーン)
 
@@ -835,4 +835,4 @@ terms by design, so the row and dialog title kept `トリミング`.
   命名・コメントされたもの)を再利用しており、将来そのクラスの見た目を変更すると
   この補足文にも意図せず影響する(非ブロッキングとしてreviewerが承認、専用クラスへ
   分離するのが望ましい)
-- Commit: pending (batch PR covering Issues #20–#23)
+- Commit: 4a32447 (PR #36)

@@ -35,7 +35,12 @@ export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }:
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    // インラインstyleのtransitionはCSSクラス側のtransitionを丸ごと上書きするため、
+    // dnd-kitの並べ替えアニメーションとホバー等の背景色トランジション(ImageList.module.css
+    // の.row)を連結して両方効かせる
+    transition: [transition, "background-color var(--duration-fast) var(--ease-standard)"]
+      .filter(Boolean)
+      .join(", "),
     // ドラッグ中は半透明にして、元の位置と掴んでいる要素を視覚的に区別する
     opacity: isDragging ? 0.5 : 1,
   };
@@ -84,7 +89,11 @@ export function ImageListRow({ item, showControls, onRemove, onRotate, onCrop }:
   }, [item.bitmap, item.crop, item.rotation]);
 
   return (
-    <li ref={setNodeRef} style={style} className={styles.row}>
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? `${styles.row} ${styles.rowDragging}` : styles.row}
+    >
       {/* 並べ替え用ハンドル。dnd-kitのattributes/listenersをそのまま渡すことで
           マウス・タッチ・キーボードいずれの操作でもドラッグを開始できる */}
       {showControls && (

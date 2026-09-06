@@ -157,6 +157,43 @@ describe("project scaffold", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows preview guidance when there are no images, and hides it once one is added", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+    try {
+      render(<Home />);
+
+      expect(
+        screen.getByText("画像を追加すると、結合結果がここに表示されます"),
+      ).toBeInTheDocument();
+
+      const file = new File([new Uint8Array(pngSignature)], "first.png", { type: "image/png" });
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      expect(
+        screen.queryByText("画像を追加すると、結合結果がここに表示されます"),
+      ).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("decodes and appends one selected image without network access", async () => {
     const user = userEvent.setup();
     const bitmap = {

@@ -268,6 +268,8 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
     onConfirm(item.id, rect);
   };
 
+  const titleId = `crop-dialog-title-${item.id}`;
+
   return (
     <div className={styles.overlay}>
       <div
@@ -275,9 +277,12 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
         className={styles.panel}
         role="dialog"
         aria-modal="true"
-        aria-label={`トリミング: ${item.name}`}
+        aria-labelledby={titleId}
         tabIndex={-1}
       >
+        <h2 id={titleId} className={styles.title}>
+          トリミング: {item.name}
+        </h2>
         <div ref={wrapperRef} className={styles.canvasWrapper}>
           <canvas ref={canvasRef} className={styles.canvas} />
         </div>

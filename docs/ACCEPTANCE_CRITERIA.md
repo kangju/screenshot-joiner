@@ -15,6 +15,15 @@
 - The project builds as static files in `out/`.
 - No user image, ZIP content, filename, or output is sent to a remote endpoint or persisted after the tab closes.
 
+## Verification perspective
+
+Individual functions passing their own tests does not guarantee the final
+result is correct across the whole operation flow (input → transform →
+layout → render → output/dispose). Guarantees about "in-between" state —
+the output-size guard, allocation ordering, resource release, worker
+termination — require at least one real-operation scenario exercised
+end-to-end, in addition to the unit tests for the function itself.
+
 ## Review severities
 
 - Critical: privacy breach, arbitrary external transmission, unsafe archive behavior, data corruption, or application-wide failure.

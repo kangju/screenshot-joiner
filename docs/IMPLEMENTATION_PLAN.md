@@ -7,6 +7,9 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P0-01 Verify Next.js static build and test setup.
 - P0-02 Establish editor types, reducer skeleton, and test helpers.
 - P0-03 Add a network-request guard test for the editor workflow.
+- P0-04 Confirm the actual deploy target (e.g. Cloudflare Pages vs. Workers)
+  and deploy command with the user, and do one trial deploy of a minimal
+  static artifact.
 
 ## Phase 1 — Basic image input and joining
 
@@ -14,8 +17,7 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P1-02 Add multiple files while preserving selected order.
 - P1-03 Reject unsupported and malformed image data with an accessible error.
 - P1-04 Paste one or more clipboard images at the end of the list.
-- P1-05 Calculate vertical placement with zero gap.
-- P1-06 Calculate horizontal placement with zero gap.
+- P1-05/06 Calculate vertical and horizontal placement with zero gap.
 - P1-07 Render and download a PNG.
 - P1-08 Drag-and-drop image files onto the image list.
 - P1-09 Remove an individual image.

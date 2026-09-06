@@ -63,6 +63,7 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P5-03 Export JPEG with configurable quality and an opaque background.
 - P5-04 Warn before allocating output above the pixel threshold.
 - P5-05 Revoke object URLs and close ImageBitmap objects on deletion, clear, and unmount.
+- P5-06 Include a client-local timestamp in the downloaded filename.
 
 ## Phase 6 — Release gate
 

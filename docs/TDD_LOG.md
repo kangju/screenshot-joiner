@@ -580,43 +580,25 @@ Residual risk: the actual live `wrangler deploy` behavior against this config ha
 
 ### 2026-09-06 — Reduce AI-agent doc token usage; fix stale/contradictory docs
 
-Read-only Codex CLI brainstorm (`codex exec -s read-only`, no scoring) on
-the same doc set informed the plan before implementing it. Added a "Current
-status" index to this log (read it + grep by ID, not the whole file); restructured
-`docs/Question.md` with a conclusion line per topic above the folded
-history; trimmed `docs/TDD_WORKFLOW.md`'s 12-step protocol, which duplicated
-its two diagrams; added a full-check reuse note; compressed `create-pr`'s
-incident prose; fixed stale docs (`docs/ARCHITECTURE.md`'s and
-`docs/IMPLEMENTATION_PLAN.md`'s "Cloudflare Pages" → Workers static assets,
-`create-pr`'s commit-language wording); deleted the sequential-only
-`prompts/START.md` and its `README.md` reference; softened `README.md`'s
-"3エージェントは同時にコードを書かず" to lane-scoped wording.
-
-Full checks: test 189/189, typecheck clean, lint clean, build succeeds —
-docs/skill-only change, no source touched.
-
-Files: `AGENTS.md` (`CLAUDE.md` symlink target), `README.md`,
-`docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/Question.md`,
-`docs/TDD_LOG.md`, `docs/TDD_WORKFLOW.md`, `.claude/skills/create-pr/SKILL.md`,
-`.claude/skills/full-check/SKILL.md`, `prompts/START.md` (deleted)
-Residual risk: existing 53 pre-index log entries left as-is (archiving needs
-user judgment, out of scope here); `docs/Question.md`'s P4-04 conclusion is
-a tentative/accepted-with-known-gap decision, not a fully closed one — see
-its own wording.
-
-### 2026-09-06 — codex-review round on the doc-token-reduction change (76→88), and fixes
-
-Scored `codex-review` skill run over the previous entry's diff (separate
-from the pre-implementation brainstorm above). Round 1: 76/100 — one
-overstated claim in `docs/Question.md`, one structural bug in this log (an
-entry spliced into the wrong place), a few stale/contradictory doc mentions,
-and one skill-file inaccuracy; all fixed. Round 2: 88/100 — confirmed the
-fixes, plus two smaller carry-overs fixed in the same pass. Play-by-play in
-PR #10's description and commit history, not here.
-
-Full checks: test 189/189, typecheck clean, lint clean, build succeeds —
-docs/skill-only change, no source touched.
-
-Files: `docs/Question.md`, `docs/TDD_LOG.md`, `docs/IMPLEMENTATION_PLAN.md`,
-`README.md`, `.claude/skills/full-check/SKILL.md`, `docs/TDD_WORKFLOW.md`
-Residual risk: none.
+- Change: added a "Current status" index to this log (grep by ID instead of
+  reading it whole); restructured `docs/Question.md` as conclusion-first
+  with folded history; trimmed `docs/TDD_WORKFLOW.md`'s 12-step protocol,
+  which duplicated its two diagrams; added a full-check reuse note;
+  compressed `create-pr`'s incident prose; fixed stale "Cloudflare Pages"
+  mentions (now Workers static assets) and other doc contradictions;
+  deleted the sequential-only `prompts/START.md`.
+- Review: `codex-review` skill, two rounds (76→88/100) — fixed an
+  overstated `docs/Question.md` claim, a misplaced `Residual risk` line, and
+  stale/contradictory docs. GitHub Copilot's PR review then flagged a broken
+  `grep` code span, ambiguous append-only wording, and this entry being too
+  long for its own stated rule — fixed.
+- Full checks: test 189/189, typecheck clean, lint clean, build succeeds —
+  docs/skill-only change, no source touched.
+- Files: `AGENTS.md` (`CLAUDE.md` symlink target), `README.md`,
+  `docs/ARCHITECTURE.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/Question.md`,
+  `docs/TDD_LOG.md`, `docs/TDD_WORKFLOW.md`,
+  `.claude/skills/create-pr/SKILL.md`, `.claude/skills/full-check/SKILL.md`,
+  `prompts/START.md` (deleted)
+- Residual risk: existing 53 pre-index log entries left as-is (archiving
+  needs user judgment); `docs/Question.md`'s P4-04 conclusion remains
+  tentative/accepted-with-known-gap, not fully closed.

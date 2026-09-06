@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [main]
 
+# checkoutのみ行うため、デフォルトの広い権限を必要最小限に絞る。
+permissions:
+  contents: read
+
 jobs:
   full-check:
     runs-on: ubuntu-latest

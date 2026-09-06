@@ -92,7 +92,11 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
       const last = focusable[focusable.length - 1];
 
       if (event.shiftKey) {
-        if (document.activeElement === first) {
+        // 開いた直後はtabIndex={-1}のパネル自身にフォーカスがあり(上の
+        // useEffect参照)、これはfocusableの一覧に含まれない。この状態から
+        // Shift+Tabすると素通りして背景へフォーカスが漏れるため、パネル自身も
+        // 「先頭にいる」ものとして扱い、末尾要素へ折り返す
+        if (document.activeElement === first || document.activeElement === panel) {
           event.preventDefault();
           last.focus();
         }

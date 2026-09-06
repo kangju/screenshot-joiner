@@ -422,4 +422,23 @@ describe("CropDialog", () => {
 
     expect(confirmButton).toHaveFocus();
   });
+
+  it("traps focus inside the dialog: Shift+Tab right after opening (panel itself still focused) wraps to the last element instead of leaking to the background", async () => {
+    const user = userEvent.setup();
+
+    render(<CropDialog item={makeItem()} onConfirm={jest.fn()} onCancel={jest.fn()} onReset={jest.fn()} />);
+    await waitForCropperReady();
+
+    const dialog = screen.getByRole("dialog");
+    const confirmButton = screen.getByRole("button", { name: "切り抜きを適用" });
+
+    // 開いた直後はtabIndex={-1}のパネル自身にフォーカスがあり、focusableの
+    // 一覧には含まれない。この状態を起点にShift+Tabしても背景へ漏れず、
+    // 末尾要素へ折り返すことを検証する
+    expect(dialog).toHaveFocus();
+
+    await user.tab({ shift: true });
+
+    expect(confirmButton).toHaveFocus();
+  });
 });

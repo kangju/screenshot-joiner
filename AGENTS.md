@@ -9,7 +9,9 @@ Build a static, client-only business screenshot joiner with Next.js App Router a
 - ZIP extraction runs in a Web Worker; validate signatures and enforce size/count limits.
 - Support 320px-wide touch UI: 44px targets, drag handle, keyboard access, Lucide icons, tooltip and accessible name for icon-only controls.
 - Store crop/rotation/size as metadata until render. Preserve unrelated changes.
-- Write code comments in Japanese. Keep identifiers and commit messages in English. This does not apply to user-facing UI text (labels, headings, messages), which stays Japanese per `docs/REQUIREMENTS.md`; only non-UI string literals (error codes, CSS class names, etc.) follow the English rule.
+- Start a new, unrelated task on a fresh branch off an up-to-date main; continue follow-up work (fixes, review responses) on the current branch.
+- Write code comments in Japanese; keep identifiers in English. User-facing UI text (labels, headings, messages) is Japanese per `docs/REQUIREMENTS.md` — only non-UI string literals (error codes, CSS class names, etc.) follow the English identifier rule.
+- Write commit messages and PR titles/bodies in Japanese (commit trailers such as `Co-Authored-By:` stay in English). See `.claude/skills/create-pr/` for the PR template.
 
 Read only what the task needs:
 

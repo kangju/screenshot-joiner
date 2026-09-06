@@ -102,7 +102,7 @@ This section only adds what they don't show:
   verification" before starting `test_writer`:
   1. Prepare material whose correct answer can be computed independently —
      e.g. a color-coded image, or a crafted/malformed archive.
-  2. Drive a minimal real interaction and confirm actual behavior: for a
+  2. Drive a minimal real interaction and confirm actual behavior: for an
      (a)-type UI library, its coordinate system, event firing order, and CSS
      defaults, which requires a real browser (jsdom cannot reproduce them);
      for a (b)-type data format, its per-encoding behavior, which Node

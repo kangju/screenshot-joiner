@@ -1,9 +1,11 @@
 # TDD Log
 
-Append one entry after each completed TDD loop, plus for other significant
-process/infra fixes and external reviews (e.g. the Cloudflare deploy entry
-below) — pick whichever of the two templates below fits, adapting its
-fields as needed, while keeping each field short. The dated
+Append one entry after each completed lane (a lane may cover several
+similar cases — see `docs/TDD_WORKFLOW.md`'s log-entry granularity rule),
+plus for other significant process/infra fixes and external reviews (e.g.
+the Cloudflare deploy entry below) — pick whichever of the two templates
+below fits, adapting its fields as needed, while keeping each field short.
+The dated
 entries below are append-only and grow without bound — do not read them in
 full for routine work. Read the "Current status" index below instead;
 search by requirement ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only

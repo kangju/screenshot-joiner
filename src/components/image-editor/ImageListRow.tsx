@@ -84,6 +84,12 @@ export function ImageListRow({ item, showControls, isCompact, onRemove, onRotate
     const drawWidth = transformed.width * scale;
     const drawHeight = transformed.height * scale;
 
+    // scaleが0(0幅/0高さの変形結果)のとき、drawImageに幅/高さ0の矩形を渡すと
+    // 例外になりうるため描画をスキップする(空のcanvasのまま)
+    if (drawWidth === 0 || drawHeight === 0) {
+      return;
+    }
+
     context.drawImage(
       transformed,
       (canvas.width - drawWidth) / 2,

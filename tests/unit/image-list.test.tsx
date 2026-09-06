@@ -562,4 +562,29 @@ describe("ImageList", () => {
       restore();
     }
   });
+
+  it("skips thumbnail drawing instead of calling drawImage with a zero-size rectangle", () => {
+    const restore = mockMatchMedia(false);
+
+    try {
+      const zeroWidthItem = {
+        ...makeItem("first"),
+        // 幅0の異常なbitmapではcomputeContainScaleが0を返し、drawWidth/drawHeightも
+        // 0になる。drawImageに幅/高さ0の矩形を渡すと例外になりうるため、描画自体を
+        // スキップすることを検証する
+        bitmap: { width: 0, height: 100, close: jest.fn() } as unknown as ImageBitmap,
+      };
+
+      const { container } = render(
+        <ImageList items={[zeroWidthItem]} onAddFiles={jest.fn()} onRemove={jest.fn()} onReorder={jest.fn()} onRotate={jest.fn()} onCrop={jest.fn()} />,
+      );
+
+      const thumbCanvas = container.querySelector("canvas");
+      const entry = canvasContexts.find((candidate) => candidate.canvas === thumbCanvas);
+
+      expect(entry?.context.drawImage).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
 });

@@ -102,9 +102,11 @@ This section only adds what they don't show:
   verification" before starting `test_writer`:
   1. Prepare material whose correct answer can be computed independently —
      e.g. a color-coded image, or a crafted/malformed archive.
-  2. Drive a minimal real interaction in a real browser (or Node) and
-     confirm the library's actual coordinate system, event firing order,
-     CSS defaults, and per-encoding behavior.
+  2. Drive a minimal real interaction and confirm actual behavior: for a
+     (a)-type UI library, its coordinate system, event firing order, and CSS
+     defaults, which requires a real browser (jsdom cannot reproduce them);
+     for a (b)-type data format, its per-encoding behavior, which Node
+     alone can confirm.
   3. Record the result in 1–2 lines in the relevant module's description in
      `docs/ARCHITECTURE.md`.
 

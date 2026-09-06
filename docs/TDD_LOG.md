@@ -2,8 +2,8 @@
 
 Append one entry after each completed TDD loop, plus for other significant
 process/infra fixes and external reviews (e.g. the Cloudflare deploy entry
-below) — adapt the template's fields to fit (drop or replace RED/GREEN/
-REVIEW when they don't apply) while keeping each field short. The dated
+below) — pick whichever of the two templates below fits, adapting its
+fields as needed, while keeping each field short. The dated
 entries below are append-only and grow without bound — do not read them in
 full for routine work. Read the "Current status" index below instead;
 search by requirement ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only

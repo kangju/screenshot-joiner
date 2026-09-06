@@ -9,8 +9,9 @@ full for routine work. Read the "Current status" index below instead;
 search by requirement ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only
 the matching entry when you need history for a specific past decision. The
 one exception to append-only: if a later entry overturns an earlier entry's
-conclusion, prefix the earlier entry's body with `⚠️ Correction: see the
-YYYY-MM-DD entry below` — never delete or rewrite the earlier entry.
+conclusion, prefix the earlier entry's body with a `⚠️ Correction:` line
+pointing to the later entry's date — never delete or rewrite the earlier
+entry.
 
 ## Current status (the one section of this file that gets edited in place, not appended to)
 

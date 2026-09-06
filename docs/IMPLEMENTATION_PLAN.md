@@ -17,7 +17,7 @@ Each numbered behavior is one TDD loop unless the test writer demonstrates that 
 - P1-02 Add multiple files while preserving selected order.
 - P1-03 Reject unsupported and malformed image data with an accessible error.
 - P1-04 Paste one or more clipboard images at the end of the list.
-- P1-05/06 Calculate vertical and horizontal placement with zero gap.
+- P1-05/P1-06 Calculate vertical and horizontal placement with zero gap.
 - P1-07 Render and download a PNG.
 - P1-08 Drag-and-drop image files onto the image list.
 - P1-09 Remove an individual image.

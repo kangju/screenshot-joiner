@@ -26,7 +26,9 @@ entry.
   guidance copy; output-size dimension/megapixel display split; button
   group labels, plain-language wording, and non-color pressed-state
   indicator in 結合設定; PNG/JPEG format controls relocated into the
-  renamed 保存・コピー section).
+  renamed 保存・コピー section, plus a Copilot-review follow-up fixing a
+  sub-10,000px total-pixel-count rounding-to-zero bug and separating the
+  copy-format note into its own `.copyNote` class).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -806,6 +808,9 @@ terms by design, so the row and dialog title kept `トリミング`.
 
 ### 2026-09-07 — Issues #23, #20, #21: 結合設定/書き出し欄のUI分かりやすさ改善(page.tsxレーン)
 
+⚠️ Correction: 総画素数表示に境界バグがあり、(b)の`.outputPixelCount`流用も
+修正した。下の「2026-09-07 — PR #36 Copilotレビュー対応」エントリを参照。
+
 - Requirement: 3件のGitHub Issue(優先度1/優先度3、いずれも`page.tsx`/`page.module.css`を
   共有するため同一レーンで直列に実施)
   - #23: 出力サイズ表記を「出力サイズ: 幅W × 高さHpx」と「総画素数: N万画素」の2行に分離
@@ -836,3 +841,41 @@ terms by design, so the row and dialog title kept `トリミング`.
   この補足文にも意図せず影響する(非ブロッキングとしてreviewerが承認、専用クラスへ
   分離するのが望ましい)
 - Commit: 4a32447 (PR #36)
+
+### 2026-09-07 — PR #36 Copilotレビュー対応: 総画素数の境界バグと注記クラスの流用を修正
+
+- Requirement: GitHub Copilotの自動レビュー(PR #36、2回)で挙がった3件を
+  トリアージ。(1)`総画素数`が1万px未満の出力で`Math.round(total/10000)`が
+  `0`になり`0万画素`と誤解を招く表示になる — 有効、修正。(2)#21で追加した
+  「コピーはPNG形式です」が`.outputPixelCount`(#23の総画素数表示向けに
+  命名)を流用している — 上のエントリで既にreviewerが非ブロッキングと
+  判定していたが、Copilotも独立に指摘したため合わせて修正。(3)
+  `next-env.d.ts`が`.next/dev/types/*`を参照しておりCI/新規cloneで
+  `tsc --noEmit`が失敗し得る — 検証の結果、無効と判断(却下、PRへ理由を
+  返信済み、対応なし)
+- RED: `page.test.tsx`に50×50(総画素数2,500px)のケースを追加し、
+  `総画素数: 2,500px`(`万画素`表記なし)を期待するテストを先に追加、
+  修正前のコードでは`0万画素`が描画されるため正当なRED
+- Change: 総画素数の描画を`width*height >= 10000`で分岐し、以上は従来
+  通り`{N}万画素`、未満は`{total.toLocaleString("en-US")}px`にフォール
+  バック。境界値(ちょうど10,000)は`1万画素`側になることを確認。
+  「コピーはPNG形式です」は新設の`.copyNote`クラス(既存の
+  `.outputPixelCount`と視覚的に同一のトークン)へ切り替え、
+  `.outputPixelCount`自体は総画素数表示専用のまま維持
+- Verification: `npx jest tests/unit/page.test.tsx`(48/48)、
+  `npx tsc --noEmit`(clean)、`npx eslint`(clean)をreviewerが独立に
+  再実行して確認、`APPROVE`。プッシュ前に`full-check`一式
+  (test 216/216、typecheck/lint/build)も実行しgreen
+- (3)の却下根拠: このPRのCI実行(コミット4e5a01c、`.next`が存在しない
+  クリーンチェックアウト直後)で`npm run typecheck`が実際に成功している
+  ことをCIログで確認、加えてローカルで`.next`を削除した状態でも
+  `tsc --noEmit`がエラーなく終了することを確認した。`tsconfig.json`の
+  `include`に`.next/types/**/*.ts`と`.next/dev/types/**/*.ts`の両方が
+  あらかじめ列挙されており、`next-env.d.ts`は`next build`/`next dev`の
+  どちらを最後に実行したかでこの2パスの間を行き来する生成物(手動編集
+  対象ではない、CLAUDE.md記載の通り)。存在しない側を一時的に参照して
+  いても`tsc --noEmit`はエラーにしないことを実測で確認済み
+- Residual risk: なし(新規に確認された残存リスクなし)。#20の
+  `role="group"`未付与は上のエントリの通り引き続き非ブロッキングの
+  改善候補
+- Commit: 2692057 (PR #36)

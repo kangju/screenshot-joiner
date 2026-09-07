@@ -69,10 +69,11 @@ entry.
   (P6-01/02/03) used WebKit/Firefox plus touch-viewport emulation as a
   proxy, reported as such, not as equivalent to real-device QA; the
   `wrangler.jsonc` static-assets deploy has a bot-reported build/deploy
-  success for commit `4a33de7a` (the `cloudflare-workers-and-pages` bot's
-  "Deployment successful" comment on PR #8), but no functional check
-  against the live URL has been recorded anywhere —
-  reported as such, not as equivalent to a working-app confirmation (run
+  success for commit `4a33de7a` (the `cloudflare-workers-and-pages[bot]`
+  account's "Deployment successful" comment on PR #8), but no functional
+  check against the live URL has been recorded anywhere; this is recorded
+  as build-success evidence only, not as equivalent to a working-app
+  confirmation (run
   `deploy-smoke-check` before the next change to deploy/build/hosting
   config); no dedicated tap-to-expand affordance for a truncated list-row
   filename (relies on `title`); crop terminology ("トリミング" for the
@@ -1117,8 +1118,10 @@ terms by design, so the row and dialog title kept `トリミング`.
   (文書のみの変更のためテスト内容自体は変更なし)。PR #8のボットコメント
   本文は`gh api repos/kangju/screenshot-joiner/issues/8/comments`で直接
   取得し、コミットSHA・文言を確認済み
-- Residual risk: なし(既存の日付付きエントリ(646-657行付近)はPR #8以前に
-  書かれた当時として正確な記述のため変更していない。⚠️ Correctionの対象は
-  「後の記述が前の記述の結論を覆す」場合であり、今回はCurrent statusという
-  「常に最新化する」節の更新であるため対象外と判断)
+- Residual risk: なし(既存の日付付きエントリ「2026-09-06 — Cloudflare
+  deploy failure: `wrangler deploy` auto-migrated to OpenNext SSR, added
+  `wrangler.jsonc`」はPR #8以前に書かれた当時として正確な記述のため変更
+  していない。⚠️ Correctionの対象は「後の記述が前の記述の結論を覆す」場合
+  であり、今回はCurrent statusという「常に最新化する」節の更新であるため
+  対象外と判断)
 - Commit: 4340d09

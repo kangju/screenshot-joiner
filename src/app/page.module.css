@@ -290,6 +290,15 @@
   color: var(--color-text-faint);
 }
 
+/* 「画像サイズ」区画の補足説明(原寸選択時に生じる余白の説明)用。
+   copyNoteと見た目は同じだが用途(保存・コピー区画)が異なるため
+   クラスを分けて意味を独立させる */
+.sizeModeNote {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--color-text-faint);
+}
+
 .zipStatus {
   display: flex;
   align-items: center;

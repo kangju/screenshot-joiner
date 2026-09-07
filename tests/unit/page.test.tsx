@@ -1604,6 +1604,24 @@ describe("project scaffold", () => {
     );
   });
 
+  it("shows a note explaining the size gap only when the original size mode is selected (issue #27)", async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    const noteText = "画像の大きさを変えずに並べます。幅や高さの差は背景色で埋まります";
+
+    // デフォルトは「元のサイズ」が選択されているため注記が表示される
+    expect(screen.getByText(noteText)).toBeInTheDocument();
+
+    // 他のサイズモードを選択すると注記は表示されない
+    await user.click(screen.getByRole("button", { name: "幅を揃える" }));
+    expect(screen.queryByText(noteText)).not.toBeInTheDocument();
+
+    // 「元のサイズ」に戻すと再度表示される
+    await user.click(screen.getByRole("button", { name: "元のサイズ" }));
+    expect(screen.getByText(noteText)).toBeInTheDocument();
+  });
+
   it("fits every image to the first image's width when fit-width is selected", async () => {
     const user = userEvent.setup();
     const makeBitmap = (width: number, height: number) =>

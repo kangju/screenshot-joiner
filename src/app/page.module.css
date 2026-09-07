@@ -312,6 +312,13 @@
   color: var(--color-text-faint);
 }
 
+/* 原寸以外のサイズモードでは注記を視覚的に隠す。マウント/アンマウントで
+   出し入れすると、その分の高さと親.sectionのgapが同時に消えて下の
+   操作欄が上下にジャンプするため、常時マウントしたまま切り替える(issue #53) */
+.sizeModeNoteHidden {
+  visibility: hidden;
+}
+
 .zipStatus {
   display: flex;
   align-items: center;

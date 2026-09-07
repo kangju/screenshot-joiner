@@ -1124,4 +1124,29 @@ terms by design, so the row and dialog title kept `トリミング`.
   していない。⚠️ Correctionの対象は「後の記述が前の記述の結論を覆す」場合
   であり、今回はCurrent statusという「常に最新化する」節の更新であるため
   対象外と判断)
-- Commit: 4340d09
+- Commit: 4340d09, f4c692d (PR #49)
+
+### 2026-09-07 — Issue #44 screenshot-acceptanceに境界サイズ・利用目的の観点を追加
+
+- Requirement: Codexによる全PR・障害履歴解析(討論2ラウンド)で見つかった、
+  `.claude/skills/screenshot-acceptance/SKILL.md`に欠けていた2つの観測観点
+  (0/境界サイズ、「テスト通過」と「利用目的達成」の区別)を追加する
+- Change: 過去の実例3件(crop矩形の0幅確定[round3]、`computeContainScale`の
+  0除算ガード[PR #31]、`getTransformedSize`のmaxDimension丸めによる1px未満
+  切り捨て[round4])を根拠に「画像処理変更」節へ、値のガードは各段階
+  (入力・変換後・丸め後)ごとに必要で、後段の丸めが改めて0を生むことがある
+  という観点を追加(ただし空プレビューの0×0のような正常な0は不正入力と
+  区別する旨も明記)。ファイル名視認性の実例(PR #4で操作ボタン表示中は
+  visually-hiddenにしたが、PR #31で実利用場面では常時識別できないと
+  再指摘され常時表示へ再設計された経緯)を根拠に「UI変更」節へ、要素の
+  存在・画面内への収まりだけでなく実際に識別・判断・実行できることを
+  受け入れ条件に含める観点を追加。「共通のルール」に、既存の検証で同じ
+  観測点を確認できる場合は重複実行しない旨も追加。完了条件の「過剰な
+  儀式化を避ける」に沿い、「選ぶ」「該当する場合」という選択的な言い回し
+  を維持し、全変更へ一式の強制はしていない
+- Verification: `full-check`(test 227件/typecheck/lint/build)すべてgreen
+  (文書のみの変更のためテスト内容自体は変更なし)。引用した3件の過去実例は
+  いずれも`docs/TDD_LOG.md`の該当する日付付きエントリ(round3/round4の
+  外部再レビュー、PR #31のP2-07/08/09エントリ)を直接読み確認済み
+- Residual risk: なし
+- Commit: fb14ea7, ba774a8 (PR #50)

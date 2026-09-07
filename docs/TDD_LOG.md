@@ -52,9 +52,12 @@ entry.
   see the dated entry below), Issue #41 (new `/terms/` static page plus
   a site-wide footer linking to it and to the GitHub repository, both
   opening in a new tab so in-progress edits on the home page aren't lost;
-  see the two dated entries below), and Issue #32 (non-obvious-only
+  see the two dated entries below), Issue #32 (non-obvious-only
   Japanese comments added to `ImageList.tsx`/`zip-client.ts`/`render.ts`;
-  see the dated entry below).
+  see the dated entry below), and Issue #53 (the size-mode note is now
+  always mounted with a `visibility: hidden`-toggling class instead of
+  being conditionally rendered, so switching size modes no longer jumps
+  the gap/background-color fields or preview; see the dated entry below).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -1203,3 +1206,48 @@ terms by design, so the row and dialog title kept `トリミング`.
   (文書のみの変更のためテスト内容自体は変更なし)
 - Residual risk: なし
 - Commit: a5d401f
+
+### 2026-09-08 — Issue #53 画像サイズモード切り替え時のレイアウトジャンクを解消
+
+- Requirement: 「画像サイズ」区画で「元のサイズ」↔他モードを切り替えても、
+  画像間隔欄・背景色欄・プレビューの位置が動かないこと。320px幅・
+  デスクトップ幅の両方で説明文の折り返し込みで成立し、連打しても
+  位置がぶれないこと。説明文が非表示のとき、スクリーンリーダーで
+  読み上げられずTabフォーカスも当たらないこと
+- RED: `tests/unit/page.test.tsx`のissue #27向けテストを、
+  「モード切替でDOMから消える」から「`sizeModeNoteHidden`クラスが
+  付く/外れる」検証へ書き換え、`it.each`で幅を揃える・高さを揃える・
+  サイズを指定それぞれについて「元のサイズ」との往復を確認する
+  パラメータ化テストにした時点で、旧実装(アンマウント)に対して
+  3ケースとも失敗することを確認
+- Change: `src/app/page.tsx`(770行目付近)の`sizeModeNote`の条件付き
+  レンダリングをやめ、`<p>`を常時マウント。`src/app/page.module.css`に
+  `.sizeModeNoteHidden { visibility: hidden; }`を追加し、
+  `state.sizeMode !== "original"`のときだけこのクラスを併せて
+  適用する。要素はどのモードでも`.section`のflex gapに参加し続けるため、
+  マウント/アンマウントに伴う高さ・gap消失によるジャンクが起きなくなる。
+  実装前に本issue内でCodex CLIに設計批評を依頼済み(3案A/B/Cのうち
+  A案=本方式を採用、issue本文に記録)、本計画自体も`codex-review`
+  スキルで別途設計批評を受けた(付与クラスの根拠をフォーカス不可では
+  なく`visibility: hidden`によるアクセシビリティツリー除外に修正、
+  テストのパラメータ化、TDD_LOG日付エントリ追記漏れの指摘を反映)
+- Verification: `full-check`(test/typecheck/lint/build)すべてgreen
+  (229件)。`browser-check`で実ブラウザ(Chromium, Playwright)を
+  320px幅・1280px幅で操作し、実画像アップロード後にモードを連打しても
+  プレビュー・画像間隔欄のbounding rect位置(y座標)が完全に一致する
+  ことを確認。320px幅では説明文が2行(高さ36px、デスクトップは1行18px)
+  に折り返る状態で検証。`el.checkVisibility({checkVisibilityCSS:true})`
+  で非表示時は`false`(可視時は`true`)であることを確認し、非表示化が
+  実際にブラウザのアクセシビリティ判定へ反映されることを検証。
+  axe-core(CDN読み込み、依存追加なし)は可視・非表示どちらの状態でも
+  違反0(初回の`color-contrast`検出はクリック直後の遷移中の一過性状態
+  で、500ms待機後は再現せず、本変更とは無関係と判断)。Tab操作で
+  「元のサイズ」ボタンから6回Tabしたときの到達順は、可視・非表示どちらの
+  状態でも説明文が一切含まれず、他の操作要素の順序に変化がないことを
+  確認(`<p>`要素はtabIndex=-1のまま変更なし)
+- Residual risk: 「サイズを指定」選択時のカスタムサイズ入力欄の出現に
+  伴うレイアウト変化は本issueのスコープ外として温存(issue本文で
+  明示的に別issue想定とされている)。実ブラウザ確認で、320px幅・
+  「サイズを指定」選択時に画像間隔欄のy座標が変化することを確認したが、
+  これは上記の理由により未対応
+- Commit: 16fe9cf

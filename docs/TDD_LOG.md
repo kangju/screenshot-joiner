@@ -1170,4 +1170,4 @@ terms by design, so the row and dialog title kept `トリミング`.
 - Verification: `full-check`(test/typecheck/lint/build)すべてgreen
   (文書のみの変更のためテスト内容自体は変更なし)
 - Residual risk: なし
-- Commit: (このコミット)
+- Commit: a5d401f

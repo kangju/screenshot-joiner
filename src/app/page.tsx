@@ -766,6 +766,11 @@ export default function Home() {
                   />
                 </label>
               )}
+              {state.sizeMode === "original" && (
+                <p className={styles.copyNote}>
+                  画像の大きさを変えずに並べます。幅や高さの差は背景色で埋まります
+                </p>
+              )}
             </div>
             <div className={styles.sizeGroup}>
               <label className={styles.sizeInputLabel}>

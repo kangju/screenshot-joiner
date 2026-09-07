@@ -47,9 +47,11 @@ entry.
   leftover Codex-starter boilerplate into an actual product description
   (Issue #3, PR #39, docs-only so no dedicated log entry), Issue #27
   (original-size note explaining the background-color gap, see the dated
-  entry below), and Issue #29 (preview area height capped at 60vh so a
+  entry below), Issue #29 (preview area height capped at 60vh so a
   tall joined image no longer pushes the save controls far down the page;
-  see the dated entry below).
+  see the dated entry below), and Issue #32 (non-obvious-only Japanese
+  comments added to `ImageList.tsx`/`zip-client.ts`/`render.ts`; see the
+  dated entry below).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -1003,3 +1005,22 @@ terms by design, so the row and dialog title kept `トリミング`.
   体感調整は今回のスコープ外(Issue本文の指示通り、固定保存バー等の追加対応は
   見送り)
 - Commit: 6ec9e47, 1b1e624 (PR #42)
+
+### 2026-09-07 — Issue #32 コードコメントの補足
+
+- Requirement: コメント密度が低いと指摘された5ファイルについて、CLAUDE.mdの
+  方針(コードコメントは日本語、WHYが非自明な箇所のみ)に沿って補う
+- Change: 振る舞いの変更を伴わないコメント追加のみのため、通常のRED/GREEN
+  サイクルは適用せず直接編集。`src/components/image-editor/ImageList.tsx`
+  (編集モード切り替えとコントロール表示の関係、ファイル入力valueリセットの
+  理由、一覧内並べ替え(dnd-kit)とは別系統のネイティブファイルドロップAPIで
+  あること)、`src/lib/zip-client.ts`(finish()のsettledガードが必要な理由、
+  Worker onerrorをunreadable扱いにする理由、postMessageのtransferable引数に
+  よるbuffer detachの注意点)、`src/lib/render.ts`(canvas.width/heightが整数
+  のみを受け付けるための丸め)にコメントを追加。`src/app/layout.tsx`と
+  `src/lib/rotation.ts`は既に自明・簡潔で追加すべき非自明な処理が無かった
+  ため変更していない
+- Verification: `full-check`(test 218件/typecheck/lint/build)すべてgreen
+  (コメントのみの変更のためテスト内容自体は変更なし)
+- Residual risk: なし
+- Commit: 5087121

@@ -41,7 +41,9 @@ entry.
   landed as `AGENTS.md` Guardrails bullets in a follow-up pass that closed
   out #34); added evidence-based/UTC-vs-local-time reviewer guidance to
   `docs/TDD_WORKFLOW.md` and `.github/copilot-instructions.md`; confirmed
-  `CLAUDE.md` is a symlink to `AGENTS.md`, not a second copy).
+  `CLAUDE.md` is a symlink to `AGENTS.md`, not a second copy), and Issue #29
+  (preview area height capped at 60vh so a tall joined image no longer
+  pushes the save controls far down the page; see the dated entry below).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -947,3 +949,30 @@ terms by design, so the row and dialog title kept `トリミング`.
   優先し、`deploy-smoke-check`と`agent-docs-lint`関連の記述はより自然かつ低コストな
   配置先(本ファイルと`docs/PROMPT_DESIGN.md`)へ移した)
 - Commit: f928d3d, e9ab103 (PR #37)
+
+### 2026-09-07 — Issue #29 プレビュー高さ制限によるスクロール距離短縮
+
+- Requirement: 画像読み込み後、保存ボタンまでの距離が縦に長い結合結果によって
+  画面下へ過度に押し出される問題を緩和する(docs/REQUIREMENTS.md 非機能要件
+  Responsive UI)。まずはプレビュー表示自体の高さをビューポート高さに応じて
+  制限し、画像全体が縮小表示される対応から始める(常時固定の保存バー等の
+  大きな変更はIssue本文の指示により見送り)
+- RED: プレビュー枠(`.preview`の外側div)に高さ制限用のクラスが付与される
+  ことを検証するテストを追加、要素はあるがクラスが無く失敗することを確認
+- Change: `.preview`に`.previewBounded`(`max-height: 60vh; overflow: hidden;`)
+  を追加。当初`previewCanvas`側は`max-height: 100%`のみで済ませようとしたが、
+  実ブラウザで検証したところflexの親がmax-heightのみ(明示的なheightなし)だと
+  percentageのmax-heightが解決されずcanvasが縮小されないことが判明(canvasの
+  実測描画高さが親のmax-height:480pxを超えたまま3760pxで変化なし)。
+  `previewCanvas`にも同じ60vh値をCSSカスタムプロパティ経由で直接指定する形に
+  修正し、縮小が実際に効くことを再検証で確認した
+- Verification: narrow suite → `page.test.tsx`全体(49件)→ `full-check`
+  (test 217件/typecheck/lint/build)すべてgreen。実ブラウザ(Playwright)で
+  (1)通常サイズ画像は縮小されず現状維持、(2)縦長canvas(4000px)が60vh(480px)
+  まで縦横比を保って縮小されること、(3)375×800のモバイル幅で縦長画像使用時の
+  ページscrollHeightが短縮されること、(4)axe-core違反0件、(5)保存ボタンへの
+  キーボードフォーカス到達を確認(`screenshot-acceptance`で選定した観測点)
+- Residual risk: 60vhという上限値は実測に基づく初期値であり、実運用での
+  体感調整は今回のスコープ外(Issue本文の指示通り、固定保存バー等の追加対応は
+  見送り)
+- Commit: 6ec9e47

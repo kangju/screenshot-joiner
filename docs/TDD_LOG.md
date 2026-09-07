@@ -1098,4 +1098,4 @@ terms by design, so the row and dialog title kept `トリミング`.
   いずれも`docs/TDD_LOG.md`の該当する日付付きエントリ(round3/round4の
   外部再レビュー、PR #31のP2-07/08/09エントリ)を直接読み確認済み
 - Residual risk: なし
-- Commit: (次のコミットで反映後にSHAを追記)
+- Commit: fb14ea7

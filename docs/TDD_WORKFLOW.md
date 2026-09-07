@@ -19,8 +19,9 @@ When this protocol is actually executed as a Workflow-tool script (only once
 there's opted-in, multi-agent work to run), `commander` maps to a first
 phase — either a structured `agent()` call that returns the lane partition,
 or plain script logic — feeding a `parallel()` of per-lane `pipeline()`
-calls, with the log/full-check merge as a final sequential step. Load the
-`workflow-authoring` skill before writing that script.
+calls, with the log/full-check merge as a final sequential step. The Agents
+table and the two flowcharts above are the source of truth for that
+script's shape; there is no separate skill for writing it.
 
 ## Parallel lanes
 

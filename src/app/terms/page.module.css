@@ -1,0 +1,58 @@
+.title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-title);
+  font-weight: var(--weight-bold);
+}
+
+.lead {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  line-height: var(--leading-body);
+}
+
+/* page.module.cssの.sectionと同じ「細い区切り線+見出し」パターンを踏襲する */
+.section {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.section:first-of-type {
+  padding-block-start: 0;
+  border-block-start: none;
+}
+
+.section + .section {
+  margin-block-start: var(--space-4);
+}
+
+.heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-section);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+
+.section p {
+  margin: 0 0 var(--space-2);
+  line-height: var(--leading-body);
+}
+
+.section p:last-child {
+  margin-bottom: 0;
+}
+
+.list {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  line-height: var(--leading-body);
+}
+
+.list li + li {
+  margin-block-start: var(--space-2);
+}
+
+.revisedDate {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--color-text-muted);
+}

@@ -47,9 +47,12 @@ entry.
   leftover Codex-starter boilerplate into an actual product description
   (Issue #3, PR #39, docs-only so no dedicated log entry), Issue #27
   (original-size note explaining the background-color gap, see the dated
-  entry below), and Issue #29 (preview area height capped at 60vh so a
+  entry below), Issue #29 (preview area height capped at 60vh so a
   tall joined image no longer pushes the save controls far down the page;
-  see the dated entry below).
+  see the dated entry below), and Issue #41 (new `/terms/` static page plus
+  a site-wide footer linking to it and to the GitHub repository, both
+  opening in a new tab so in-progress edits on the home page aren't lost;
+  see the two dated entries below).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -1003,3 +1006,50 @@ terms by design, so the row and dialog title kept `トリミング`.
   体感調整は今回のスコープ外(Issue本文の指示通り、固定保存バー等の追加対応は
   見送り)
 - Commit: 6ec9e47, 1b1e624 (PR #42)
+
+### 2026-09-07 — Issue #41 サイクル1 フッター追加
+
+- Requirement: 利用規約・プライバシーページとソースコードへの導線を持つ
+  フッターを全ページに表示する(docs/REQUIREMENTS.md Privacy節)
+- RED: Footer単体(規約リンク・GitHubリンクの属性・アクセシブルネーム・
+  コピーライト表記・44pxタッチターゲット用クラス)と、RootLayoutへの組み込み
+  を検証するテストを追加。モジュール未実装/フッター未描画で失敗を確認
+- Change: `src/components/layout/Footer.tsx`/`Footer.module.css`を新規作成し、
+  `src/app/layout.tsx`の`<body>`に`{children}`の兄弟として追加。規約・GitHubの
+  両リンクは`target="_blank" rel="noopener noreferrer"`とし、同一タブで
+  `/terms/`へ遷移すると`page.tsx`のin-memory編集状態が失われることに配慮した。
+  視覚的なリンクテキストに加え`.visually-hidden`で「別タブで開きます」を補足
+- Verification: narrow suite → 全体(223件)→ `full-check`
+  (test/typecheck/lint/build)すべてgreen。実ブラウザ(Playwright)でaxe-core
+  違反を1件検出(`.copyright`が`--color-text-faint`を使い`--color-bg`背景で
+  コントラスト比4.39:1、AA未達)、`page.module.css`の`.previewEmpty`と同じ
+  理由で`--color-text-muted`へ変更し解消(違反0件を再確認)。320px幅での
+  横スクロール無し、キーボード(Tab+Enter)での新規タブオープン、画像読み込み
+  済み状態で規約リンクを開いても元タブの編集状態が保持されることを確認
+  (`screenshot-acceptance`で選定した観測点)
+- Residual risk: なし
+- Commit: 4e20271
+
+### 2026-09-07 — Issue #41 サイクル2 利用規約・プライバシーページ追加
+
+- Requirement: `/terms/`に利用規約・プライバシーを1ページにまとめた静的
+  ページを追加する(docs/REQUIREMENTS.md Privacy節、Issue #41本文のCodex
+  設計批評を反映)
+- RED: 必須の見出し8点、プライバシー説明(非送信・非永続化とCloudflareの
+  区別)、匿名の運営者表記(「個人開発者」)、GitHub Issuesのみの連絡先リンク
+  を検証するテストを追加。モジュール未実装で失敗を確認
+- Change: `src/app/terms/page.tsx`/`page.module.css`を新規作成。全面免責では
+  なく法令上免除できない責任までは免除しない旨、無条件の規約変更権を避け
+  最終改定日を明記する運用、アプリのコードと利用者画像の知的財産権の切り
+  分けをIssue本文のCodex助言どおり反映した
+- Verification: narrow suite → 全体(227件)→ `full-check`すべてgreen。
+  `npm run build`後に`out/terms/index.html`が生成されることを確認し、静的
+  ファイルサーバー経由で`/terms/`への直接アクセス・リロードが200で成功する
+  こと、axe-core違反0件、320px幅での横スクロール無し、キーボードでの
+  GitHub Issuesリンク・フッターへの到達を実ブラウザで確認
+  (`screenshot-acceptance`で選定した観測点)
+- Residual risk: `docs/ARCHITECTURE.md`の「Proposed directories」ツリーは
+  既に実装済み構成と乖離した初期設計時の想定図であり、他の完了issueでも
+  更新されてこなかったため今回も更新していない(意図的なスコープ外)。
+  LICENSEファイルの追加はIssue本文の指示どおり別issue扱いとし対応していない
+- Commit: 4e20271, c2341c4 (PR未作成)

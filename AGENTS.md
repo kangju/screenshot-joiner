@@ -13,7 +13,7 @@ Build a static, client-only business screenshot joiner with Next.js App Router a
 - Start a new, unrelated task on a fresh branch off an up-to-date main; continue follow-up work (fixes, review responses) on the current branch (`fresh-branch` decides and does the git steps).
 - Write code comments in Japanese; keep identifiers in English. User-facing UI text (labels, headings, messages) is Japanese per `docs/REQUIREMENTS.md`; other non-UI string literals (error codes, CSS class names, etc.) are English.
 - Write commit messages and PR titles/bodies in Japanese (commit trailers such as `Co-Authored-By:` stay in English). See `.claude/skills/create-pr/` for the PR template; `address-pr-feedback` handles review responses afterward.
-- After a substantial edit to `CLAUDE.md`/`AGENTS.md` (a symlink pair, so editing one edits both) or `docs/TDD_WORKFLOW.md`, run `agent-docs-lint` to check they stay consistent with each other.
+- After a substantial edit to `CLAUDE.md`/`AGENTS.md` (a symlink pair — editing one edits both, so the two can't drift from each other) or `docs/TDD_WORKFLOW.md`, run `agent-docs-lint` to check cross-document references (skill names, file paths, section links) stay valid and consistent across the doc set.
 
 Read only what the task needs:
 

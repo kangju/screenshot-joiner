@@ -1,0 +1,39 @@
+/* mainと同じ中央寄せ・最大幅にして本文と視覚的に揃える(globals.cssのmainルールを踏襲) */
+.footer {
+  width: min(100% - 2rem, 72rem);
+  margin-inline: auto;
+  padding-block: var(--space-4) var(--space-6);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.footerLink {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: var(--target-min);
+  color: var(--color-text-muted);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+
+.footerLink:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.copyright {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-caption);
+  /* --color-text-faintは--color-bg(#f3f4f6)背景では4.39:1でWCAG AA(4.5:1)未達のため、
+     十分なコントラストが確認済みの--color-text-mutedを使う(page.module.cssの
+     .previewEmptyと同じ理由) */
+  color: var(--color-text-muted);
+}

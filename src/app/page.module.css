@@ -206,7 +206,7 @@
 
 .previewCanvas {
   max-width: 100%;
-  max-height: var(--preview-max-height, 60vh);
+  max-height: var(--preview-max-height, none);
   width: auto;
   height: auto;
   /* 出力結果の端まで確認できるよう、表示枠と違って角を丸めない */

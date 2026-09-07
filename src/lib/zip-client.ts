@@ -30,6 +30,9 @@ export const extractZipFile = (
     resolveResult = resolve;
   });
 
+  // done/onerrorの後にcancel()が呼ばれる(またはその逆)など、finish()が
+  // 複数回呼ばれうる経路が複数あるため、settledで2回目以降を無視する
+  // (Promiseの二重resolveやWorkerの多重terminateを防ぐ)
   const finish = (outcome: ZipExtractionResult) => {
     if (settled) {
       return;
@@ -55,10 +58,15 @@ export const extractZipFile = (
     }
   };
 
+  // Worker内で捕捉されない例外(想定外のクラッシュ)はメッセージプロトコル外で
+  // 発生するため、具体的な失敗理由を受け取れない。安全側に倒しunreadable扱いにする
   worker.onerror = () => {
     finish({ ok: false, reason: "unreadable" });
   };
 
+  // 第2引数[buffer]でArrayBufferをコピーせず所有権ごとWorkerへtransferする
+  // (大きなZIPをコピーするコストを避けるため)。transfer後、このスレッド側の
+  // bufferはdetachされ中身が読めなくなる点に注意(呼び出し側で使い回さないこと)
   worker.postMessage({ type: "extract", buffer } satisfies ZipWorkerRequest, [buffer]);
 
   return {

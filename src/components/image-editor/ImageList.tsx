@@ -55,6 +55,8 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isCompact = useIsCompactViewport();
   const [isEditing, setIsEditing] = useState(false);
+  // PCでは常時、スマホでは「並べ替え・編集」ボタンで切り替えたときだけ
+  // 各行の並べ替えハンドル・削除ボタンを表示する(FR-09の編集モード切り替え要件)
   const showRowControls = !isCompact || isEditing;
 
   // ポインター操作は誤クリックでドラッグが始まらないよう一定距離の移動を要求し、
@@ -70,9 +72,14 @@ export function ImageList({ items, onAddFiles, onRemove, onReorder, onRotate, on
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     onAddFiles(Array.from(event.target.files ?? []));
+    // 値をリセットしないと、直前と同じファイルを選び直してもonChangeが
+    // 発火せず再追加できなくなる
     event.target.value = "";
   };
 
+  // ここでのドラッグ&ドロップはOS/ブラウザ標準のファイルドロップAPIを使う。
+  // 一覧内の並べ替えドラッグ(下のDndContext)とは別の仕組みで、dropを許可する
+  // にはdragOverでpreventDefault()する必要がある(しないとdropイベントが発火しない)
   const handleDragOver = (event: DragEvent<HTMLUListElement>) => {
     event.preventDefault();
   };

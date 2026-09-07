@@ -7,6 +7,7 @@ The prompt set minimizes repeated context while keeping hard gates explicit:
 - Detailed product context stays in routed documents and is opened only when relevant. `.claude/skills/screenshot-acceptance/` is one such conditional reference: it's read only when a change touches UI, image processing, or limits/async handling, not for documentation-only edits.
 - Each custom agent has one job, restricted write scope, and a compact output contract.
 - `interrupt_message = false` avoids unused interruption text in agent context.
+- A lesson from a recurring or serious defect is reflected into an existing contract, regression test, or conditional skill first. A new standing rule or skill is added only when no existing location would actually reach the situation it needs to cover — this keeps the growing set of skills scoped to genuinely distinct triggers instead of one skill per incident.
 
 Based on official OpenAI guidance:
 

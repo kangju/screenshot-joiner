@@ -14,6 +14,7 @@
 - Removing images or leaving the page releases object URLs, ImageBitmap objects, workers, and listeners.
 - The project builds as static files in `out/`.
 - No user image, ZIP content, filename, or output is sent to a remote endpoint or persisted after the tab closes.
+- A user can reach the terms of service and privacy page from a footer link on any page without losing in-progress edits (opens in a new tab).
 
 ## Verification perspective
 

@@ -1150,3 +1150,34 @@ terms by design, so the row and dialog title kept `トリミング`.
   外部再レビュー、PR #31のP2-07/08/09エントリ)を直接読み確認済み
 - Residual risk: なし
 - Commit: fb14ea7, ba774a8 (PR #50)
+
+### 2026-09-08 — Issue #45 TDD_WORKFLOWのレビュー基準整理(横断確認・証拠区分・Minor打ち切り)
+
+- Requirement: Codexによる全PR・障害履歴解析(討論2ラウンド)で見つかった、
+  レビュー・レビュー対応の基準の3つのギャップ(横断確認の欠如、再実行証拠
+  一辺倒、Minorの打ち切り基準不明確)を`docs/TDD_WORKFLOW.md`・
+  `.github/copilot-instructions.md`に反映する
+- Change: (1) 「Primary-agent protocol」に横断確認の観点を追加。有効な
+  指摘への修正では、同種の呼び出し元・同種処理・参照文書のうち崩れた前提を
+  共有する箇所を確認し、「修正対象の解消」だけでなく「修正前に守っていた
+  既存の性質の維持」も受け入れ条件に含めることを明記(round2の相対サイズ
+  回帰[627行目]を根拠。範囲は関連箇所に限定し全コードベース総点検は求め
+  ない)。(2) 同節のRED/GREEN evidence段落を、実行時の不具合(再実行チェック
+  必須)と静的に確定できる不整合(該当箇所・影響を示せば十分)とに書き分け、
+  どちらでもないものは仮説として明示区別する運用を追加(「証拠を要求する」
+  自体は維持し「証拠=再実行のみ」を緩める)。(3) 「Review limit」節に
+  Minor打ち切りの基準を追加。Critical/Major解消かつ受け入れ条件達成後は
+  Minorのみを理由に追加ラウンドを必須とせず、局所的に直せるものはまとめて
+  対応し残す場合は理由を記録する(round3のフォーカストラップの記録前例
+  [648行目]を踏襲。3回の上限自体は変更せずCritical/Major残存時は維持)。
+  (4) 「Agents」節直後のWorkflow-tool未使用経路の説明(導入時にしか使わない
+  仮想的な実行経路)を削除(`grep`で他文書からの参照がないことを確認済み、
+  通常のTDD理解には不要と判断)。(5) `.github/copilot-instructions.md`の
+  証拠要求の一文を(2)と同じ区分に整合させた
+- Verification: `full-check`(test/typecheck/lint/build)すべてgreen
+  (文書のみの変更のためテスト内容自体は変更なし)。引用した過去実例は
+  いずれも`docs/TDD_LOG.md`のround2/round3エントリを直接読み確認済み。
+  `agent-docs-lint`で`docs/TDD_WORKFLOW.md`・`docs/PROMPT_DESIGN.md`・
+  `.github/copilot-instructions.md`間の参照整合性を確認
+- Residual risk: なし
+- Commit: (このコミット)

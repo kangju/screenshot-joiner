@@ -81,13 +81,17 @@ description: Push the current branch and open (or update) a GitHub pull request 
 ## gh pr create の書き方
 
 本文は一時ファイルに書き出してから`--body-file`で渡す(長い日本語本文を
-インラインHEREDOCで`--body`に渡すより、引用・改行の壊れる余地が少ない):
+インラインHEREDOCで`--body`に渡すより、引用・改行の壊れる余地が少ない)。
+固定パスだと既存ファイルの上書きや消し忘れが起きるため、`mktemp`で都度
+作成し、使い終わったら削除する:
 
 ```bash
-cat > /tmp/pr-body.md <<'EOF'
+pr_body="$(mktemp)"
+cat > "$pr_body" <<'EOF'
 <上記テンプレートで書いた本文>
 EOF
-gh pr create --title "<日本語タイトル>" --body-file /tmp/pr-body.md
+gh pr create --title "<日本語タイトル>" --body-file "$pr_body"
+rm -f "$pr_body"
 ```
 
 ## 完了後の報告

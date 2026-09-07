@@ -8,9 +8,10 @@ below fits, adapting its fields as needed, while keeping each field short.
 The dated
 entries below are append-only and grow without bound — do not read them in
 full for routine work. Read the "Current status" index below instead;
-search by requirement ID or GitHub issue number (e.g. `grep "P3-03"` or
-`grep "Issue #23"` in `docs/TDD_LOG.md`) and read only the matching entry
-when you need history for a specific past decision. The
+search by requirement ID or GitHub issue number (e.g.
+`grep "P3-03" docs/TDD_LOG.md` or `grep "Issue #23" docs/TDD_LOG.md`) and
+read only the matching entry when you need history for a specific past
+decision. The
 one exception to append-only: if a later entry overturns an earlier entry's
 conclusion, prefix the earlier entry's body with a `⚠️ Correction:` line
 pointing to the later entry's date — never delete or rewrite the earlier
@@ -942,4 +943,4 @@ terms by design, so the row and dialog title kept `トリミング`.
   文面が名指しした箇所と一部異なるが、常時指示の文字数削減という#35自体の完了条件を
   優先し、`deploy-smoke-check`と`agent-docs-lint`関連の記述はより自然かつ低コストな
   配置先(本ファイルと`docs/PROMPT_DESIGN.md`)へ移した)
-- Commit: (このサイクルのPRで確定後に追記)
+- Commit: f928d3d, e9ab103 (PR #37)

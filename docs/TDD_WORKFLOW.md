@@ -112,8 +112,9 @@ This section only adds what they don't show:
   re-run check (test/build/CI log/browser), not just plausible-sounding
   reasoning — and a calendar-date difference between a UTC and a local-time
   reading of the same instant is expected, not a defect, unless the
-  requirement specifically calls for UTC (e.g. `download.ts`'s filename
-  timestamp is deliberately local time; see its `docs/TDD_LOG.md` entry).
+  requirement specifically calls for UTC (e.g. `src/lib/download.ts`'s
+  filename timestamp is deliberately local time; see its `docs/TDD_LOG.md`
+  entry).
 - See "Review limit" below for when to stop routing findings back and ask
   the user instead.
 

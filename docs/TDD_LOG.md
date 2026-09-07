@@ -59,16 +59,25 @@ entry.
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
   has not been confirmed with the user (see `docs/Question.md` P4-04);
-  real Safari and real iOS/Android devices were never available — Phase 6's
-  cross-browser/device checks (P6-01/02/03) used WebKit/Firefox plus
-  touch-viewport emulation as a proxy, reported as such, not as equivalent
-  to real-device QA; the `wrangler.jsonc` static-assets deploy has not yet
-  been confirmed against a real Cloudflare deploy (run `deploy-smoke-check`
-  before the next change to deploy/build/hosting config); no dedicated
-  tap-to-expand affordance for a truncated list-row filename (relies on
-  `title`); crop terminology ("トリミング" for the feature/title, "切り抜き"
-  for the dialog's confirm action) intentionally coexists per
-  `docs/REQUIREMENTS.md` FR-04, not a residual gap to close.
+  FR-06's three sizing sub-decisions (initial size mode on direction
+  switch, which image is the width/height-fit reference, which axis
+  "custom" sets) are implemented per an interim reading, but that reading
+  itself is unconfirmed — spec-level sign-off is still pending, not just
+  implementation (see `docs/Question.md`'s three FR-06 entries; "implemented"
+  here does not mean "spec agreed"); real Safari and real iOS/Android
+  devices were never available — Phase 6's cross-browser/device checks
+  (P6-01/02/03) used WebKit/Firefox plus touch-viewport emulation as a
+  proxy, reported as such, not as equivalent to real-device QA; the
+  `wrangler.jsonc` static-assets deploy has a bot-reported build/deploy
+  success for commit `4a33de7a` (the `cloudflare-workers-and-pages` bot's
+  "Deployment successful" comment on PR #8), but no functional check
+  against the live URL has been recorded anywhere —
+  reported as such, not as equivalent to a working-app confirmation (run
+  `deploy-smoke-check` before the next change to deploy/build/hosting
+  config); no dedicated tap-to-expand affordance for a truncated list-row
+  filename (relies on `title`); crop terminology ("トリミング" for the
+  feature/title, "切り抜き" for the dialog's confirm action) intentionally
+  coexists per `docs/REQUIREMENTS.md` FR-04, not a residual gap to close.
 - Last full-check result: all four checks (`test` / `typecheck` / `lint` /
   `build`) green, per the most recent dated entry at the bottom of this
   file.
@@ -83,6 +92,19 @@ approved conclusion, or a defect surfaces outside the normal unit-test loop
 In the Verification/Residual risk fields, say so explicitly whenever a check
 could not actually be run (no real device, a mocked library, etc.) and why —
 never word it so it reads as full coverage when it wasn't.
+
+A provisional reading of an ambiguous requirement (tracked in
+`docs/Question.md`) is not the same as an approved spec decision — word the
+Requirement/Change fields so a later reader can tell "implemented per an
+interim reading, still awaiting sign-off" apart from "spec confirmed."
+Verification results should name the commit (or PR) they were checked
+against and how far the check actually went (e.g. "bot-reported deploy
+success" vs. "live URL opened and exercised") — these are different levels
+of evidence and reporting one as the other misleads a later reader. When
+later evidence changes what "Current status" should say, update that
+section in place immediately (it is edited in place, not appended to); the
+dated entry that was accurate at the time it was written stays as-is unless
+it meets the ⚠️ Correction bar above.
 
 ### Normal cycle
 
@@ -1074,3 +1096,29 @@ terms by design, so the row and dialog title kept `トリミング`.
   (コメントのみの変更のためテスト内容自体は変更なし)
 - Residual risk: なし
 - Commit: 5087121 (PR #48)
+
+### 2026-09-07 — Issue #43 Current statusの記載精度の是正
+
+- Requirement: Codexによる全PR・障害履歴解析(討論2ラウンド)で見つかった、
+  「Current status」の記載と実際の暫定判断・検証状況の食い違いを是正する
+  (製品コード・仕様内容は変更しない)
+- Change: (1) Open residual risksに、FR-06の3つのサイジング判断(方向切替時
+  の初期サイズモード/幅揃え・高さ揃えの基準画像/customモードの軸)が実装済み
+  だが仕様判断自体はユーザー確認待ちであることを追記(`docs/Question.md`の
+  該当3項目を参照。「実装済み」は「仕様合意済み」を意味しないと明記)。
+  (2) デプロイの残存リスク記述を、PR #8の`cloudflare-workers-and-pages[bot]`
+  による「Deployment successful」コメント(コミット`4a33de7a`向け、実際に
+  `gh api`で本文を取得し確認済み)というビルド成功の証拠と、実URLでの機能
+  疎通確認(記録なし)を書き分けた。(3) Entry template節に、暫定判断と承認
+  済み仕様の区別、検証結果への対象コミット・確認範囲の明記、Current status
+  は新しい証拠が出た時点で即時更新すること(日付付きエントリはappend-only
+  のまま)という運用ルールを追記
+- Verification: `full-check`(test 227件/typecheck/lint/build)すべてgreen
+  (文書のみの変更のためテスト内容自体は変更なし)。PR #8のボットコメント
+  本文は`gh api repos/kangju/screenshot-joiner/issues/8/comments`で直接
+  取得し、コミットSHA・文言を確認済み
+- Residual risk: なし(既存の日付付きエントリ(646-657行付近)はPR #8以前に
+  書かれた当時として正確な記述のため変更していない。⚠️ Correctionの対象は
+  「後の記述が前の記述の結論を覆す」場合であり、今回はCurrent statusという
+  「常に最新化する」節の更新であるため対象外と判断)
+- Commit: (このコミット)

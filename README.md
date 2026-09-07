@@ -39,4 +39,6 @@ npm run build     # 静的サイトのビルド
 - [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) — 実装フェーズ・順序
 - [docs/ACCEPTANCE_CRITERIA.md](docs/ACCEPTANCE_CRITERIA.md) — 受け入れ基準
 - [docs/TDD_WORKFLOW.md](docs/TDD_WORKFLOW.md) — TDD運用プロトコル
-- [docs/TDD_LOG.md](docs/TDD_LOG.md) — 開発ログ
+- [docs/TDD_LOG_STATUS.md](docs/TDD_LOG_STATUS.md) — 開発ログの現況(常時更新)
+- [docs/tdd-log/](docs/tdd-log/README.md) — 開発ログ(2026-09-08以降、1エントリ1ファイル)
+- [docs/TDD_LOG.md](docs/TDD_LOG.md) — 開発ログ(2026-09-08以前、凍結アーカイブ)

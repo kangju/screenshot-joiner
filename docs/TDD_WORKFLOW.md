@@ -4,7 +4,7 @@
 
 | Agent | Writes | Must not write | Purpose |
 | --- | --- | --- | --- |
-| `commander` | Nothing except `docs/TDD_LOG.md` entries | Everything else | Pick the next batch from `docs/IMPLEMENTATION_PLAN.md`, partition it into parallel lanes by file ownership, dispatch one pipeline per lane, then serialize the shared-file steps (log, full check) once lanes finish |
+| `commander` | Nothing except `docs/TDD_LOG_STATUS.md` and `docs/tdd-log/` entries | Everything else | Pick the next batch from `docs/IMPLEMENTATION_PLAN.md`, partition it into parallel lanes by file ownership, dispatch one pipeline per lane, then serialize the shared-file steps (status update, full check) once lanes finish |
 | `test_writer` | Tests and test-only fixtures | Production code | Express one behavior and prove RED |
 | `implementer` | Production code | Tests | Make the smallest change and prove GREEN |
 | `reviewer` | Nothing | All files | Review tests and code; approve or reject. For an independent external opinion at a batch checkpoint or on user request, use the `codex-review` skill instead of (or alongside) self-review — not every cycle, since it spends the user's own Codex quota |
@@ -26,16 +26,26 @@ writers" rule from single files to whole lanes.
   strictly sequential, as always.
 - **Across lanes**: pipelines run concurrently once `commander` has
   confirmed their file sets don't overlap.
-- **Shared files are never parallelized.** `docs/TDD_LOG.md` is a single
-  append-only file — `commander` appends one lane's entry at a time, in the
-  order lanes report `APPROVE`, never concurrently. Likewise, the
-  project-wide `full-check` skill run (which touches shared build output
-  like `.next/`) happens once, after a lane — or the whole batch — is ready,
-  not once per lane in parallel.
+- **Writes to the same file stay serialized; moving the log to one file
+  per entry doesn't change who writes it.** `docs/TDD_LOG_STATUS.md` and
+  every `docs/tdd-log/` entry are still written by `commander` alone, one
+  at a time, in the order lanes report `APPROVE`, never concurrently — the
+  same rule as before, just spread across more (smaller) files. What
+  changes is merge-time behavior, not who writes or when: a `docs/tdd-log/`
+  entry no longer shares a line region with `docs/TDD_LOG_STATUS.md` or
+  with another entry, so an unrelated branch's change can no longer
+  collide with it. Two different branches can still independently pick the
+  same date+slug filename for unrelated entries; `docs/tdd-log/README.md`'s
+  naming section covers that case (an ordinary add/add filename conflict
+  at merge time, not a lost edit). Likewise, the project-wide `full-check`
+  skill run (which touches shared build output like `.next/`) happens
+  once, after a lane — or the whole batch — is ready, not once per lane in
+  parallel.
 - **Log-entry granularity**: when one lane covers several similar cases
   (sharing the same calculation logic or the same component), the internal
   RED→GREEN loop may still run once per case, but the log entry is written
-  once, when the lane finishes (all cases `APPROVE`).
+  once, as a single `docs/tdd-log/` file, when the lane finishes (all
+  cases `APPROVE`).
 - Most entries under "High-value pure units" below live in their own file
   with no shared state (natural-sort, image-signature, zip limits, rotation
   dimension math, crop-rect normalization, fit calculations, placement
@@ -53,7 +63,7 @@ flowchart TD
     C --> D1[Lane 1: test_writer to implementer to reviewer]
     C --> D2[Lane 2: test_writer to implementer to reviewer]
     C --> D3[Lane N: test_writer to implementer to reviewer]
-    D1 --> E[commander: append TDD log entry]
+    D1 --> E[commander: write docs/tdd-log/ entry, update status]
     D2 --> E
     D3 --> E
     E --> F{All lanes in batch APPROVE?}
@@ -175,7 +185,7 @@ The maximum is three REVIEW → correction cycles per behavior. When exceeded, s
 behavior meets its acceptance criteria, outstanding Minor findings alone do
 not force another correction round. Fix the ones that are cheap to fix in
 the round already underway; for anything left over, record it (in the
-`docs/TDD_LOG.md` entry, with the reason it was left) rather than silently
+`docs/tdd-log/` entry, with the reason it was left) rather than silently
 dropping it or looping again to chase it down. This is separate from the
 three-cycle cap above, which still applies in full when Critical/Major
 findings are in play.

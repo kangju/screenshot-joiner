@@ -12,6 +12,8 @@ export const renderJoinedImage = (
   images: CanvasImageSource[],
   background: string,
 ): void => {
+  // canvas.width/heightは整数のみ受け付ける(小数を代入すると自動的に
+  // 切り捨てられる)ため、下の描画位置と揃うよう明示的に丸めておく
   const width = Math.round(layout.width);
   const height = Math.round(layout.height);
 

@@ -6,12 +6,12 @@ Build a static, client-only business screenshot joiner with Next.js App Router a
 
 - Keep `output: "export"`. No server code, database, analytics, remote image service, or image/network persistence.
 - Keep images and filenames in browser memory only. Revoke object URLs, close bitmaps, and terminate workers.
-- ZIP extraction runs in a Web Worker; validate signatures and enforce size/count limits.
-- Support 320px-wide touch UI: 44px targets, drag handle, keyboard access, Lucide icons, tooltip and accessible name for icon-only controls.
+- ZIP extraction runs in a Web Worker; validate signatures and enforce size/count limits (`spec-boundary-check` first).
+- Support 320px-wide touch UI: 44px targets, drag handle, keyboard access, Lucide icons, tooltip and accessible name for icon-only controls. Run `a11y-check` after each such change.
 - Store crop/rotation/size as metadata until render. Preserve unrelated changes.
-- Start a new, unrelated task on a fresh branch off an up-to-date main; continue follow-up work (fixes, review responses) on the current branch.
+- Start a new, unrelated task on a fresh branch off an up-to-date main; continue follow-up work (fixes, review responses) on the current branch (`fresh-branch` decides and does the git steps).
 - Write code comments in Japanese; keep identifiers in English. User-facing UI text (labels, headings, messages) is Japanese per `docs/REQUIREMENTS.md`; other non-UI string literals (error codes, CSS class names, etc.) are English.
-- Write commit messages and PR titles/bodies in Japanese (commit trailers such as `Co-Authored-By:` stay in English). See `.claude/skills/create-pr/` for the PR template.
+- Write commit messages and PR titles/bodies in Japanese (commit trailers such as `Co-Authored-By:` stay in English). See `.claude/skills/create-pr/` for the PR template; `address-pr-feedback` handles review responses afterward.
 
 Read only what the task needs:
 
@@ -28,21 +28,13 @@ sections too, not just its own FR.
 
 ## TDD loop
 
-For each bounded behavior, the primary agent runs agents sequentially; never overlap writers within a lane:
+For each bounded behavior, run `test_writer` → `implementer` → `reviewer` sequentially; never overlap writers within a lane. Do not weaken tests to get GREEN, and reviewer never edits. When the behavior touches UI, image processing, or limits/async handling, use `screenshot-acceptance` at planning time to pick the acceptance scenarios and observation points, then hand the selection to each agent. Log approved cycles in `docs/TDD_LOG.md` — its dated entries are append-only and large; read only its "Current status" section (kept up to date in place, not appended to) plus any entry you grep for by requirement ID or GitHub issue number.
 
-1. `test_writer` creates RED.
-2. Primary confirms the failure represents missing behavior.
-3. `implementer` makes GREEN.
-4. `reviewer` returns `APPROVE` or findings tagged `test_writer`/`implementer`. For an independent external opinion at a batch checkpoint or on user request, use the `codex-review` skill instead of (or in addition to) self-review — not every cycle, since it spends the user's own Codex quota.
-5. Route findings and repeat. Stop after 3 review rounds and ask the user.
-
-Do not weaken tests to get GREEN. Reviewer never edits. Log approved cycles in `docs/TDD_LOG.md` — its dated entries are append-only and large; read only its "Current status" section (which you keep up to date in place, not append to) plus any entry you grep for by requirement ID, never the whole file.
-
-When a batch has multiple independent behaviors (disjoint files), the primary agent acts as **commander**: partition the batch into parallel lanes and dispatch one test_writer→implementer→reviewer pipeline per lane concurrently. Full protocol, lane rules, and how this maps to the Workflow tool: `docs/TDD_WORKFLOW.md`.
+Full protocol — roles, RED/GREEN rules, batch/lane partitioning, the high-risk gate, and the review-round limit — is in `docs/TDD_WORKFLOW.md`; read it before starting any TDD cycle.
 
 ## Done
 
-Reviewer approves, relevant interactions have behavioral tests, and all pass. Run the `full-check` skill (`.claude/skills/full-check/`) — it is the source of truth for the exact command sequence.
+Reviewer approves, relevant interactions have behavioral tests, and all pass. Run the `full-check` skill (`.claude/skills/full-check/`) — it is the source of truth for the exact command sequence. For UI changes, also confirm with `browser-check` in a real browser.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

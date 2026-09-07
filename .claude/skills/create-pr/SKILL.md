@@ -31,14 +31,14 @@ description: Push the current branch and open (or update) a GitHub pull request 
    fast-forwardできない場合(ローカル`main`が独自に進んでいる場合)は、
    自動でマージせずユーザーに確認する。
    **これを飛ばすと事故る**(古いローカル`main`との差分に既マージ分の
-   ファイルが紛れ込んだ実例あり)。`git diff main..HEAD --stat`は必ず
+   ファイルが紛れ込んだ実例あり)。`git diff "$(git merge-base main HEAD)"..HEAD --stat`は必ず
    このステップの後に確認する。
 
 3. **`full-check`スキルを実行する。** test/typecheck/lint/buildが全て
    greenであることを確認してからPRを開く(CLAUDE.mdの「Done」基準)。
    赤い状態でPRを出さない。
 
-4. **このブランチだけの差分を確認する。** `git diff main..HEAD --stat`
+4. **このブランチだけの差分を確認する。** `git diff "$(git merge-base main HEAD)"..HEAD --stat`
    で、意図した変更だけが含まれているか(無関係なファイルが混ざって
    いないか)を目視する。
 
@@ -80,13 +80,14 @@ description: Push the current branch and open (or update) a GitHub pull request 
 
 ## gh pr create の書き方
 
-本文は必ずHEREDOCで渡す(改行・日本語が壊れないように):
+本文は一時ファイルに書き出してから`--body-file`で渡す(長い日本語本文を
+インラインHEREDOCで`--body`に渡すより、引用・改行の壊れる余地が少ない):
 
 ```bash
-gh pr create --title "<日本語タイトル>" --body "$(cat <<'EOF'
+cat > /tmp/pr-body.md <<'EOF'
 <上記テンプレートで書いた本文>
 EOF
-)"
+gh pr create --title "<日本語タイトル>" --body-file /tmp/pr-body.md
 ```
 
 ## 完了後の報告

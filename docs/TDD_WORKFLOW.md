@@ -92,29 +92,27 @@ This section only adds what they don't show:
 
 - Before starting a lane, `commander` states its acceptance criteria and
   owned files — this is also the *only* handoff each spawned agent gets:
-  requirement ID, acceptance criteria, owned files, the relevant spec
-  section(s), and (if resuming after a review finding) the last review
-  result. Never hand off the full conversation or the full
+  requirement ID, acceptance criteria (plus any `screenshot-acceptance`
+  scenarios chosen for UI/image/limits-async behavior), owned files, the
+  relevant spec section(s), and (if resuming after a review finding) the
+  last review result. Never hand off the full conversation or the full
   `docs/TDD_LOG.md`.
 - **High-risk gate**: if a lane's target either (a) hands DOM/coordinate/event
   ownership to a third-party UI library (e.g. cropperjs), or (b) parses an
-  untrusted external data format (e.g. ZIP), do the following "oracle
-  verification" before starting `test_writer`:
-  1. Prepare material whose correct answer can be computed independently —
-     e.g. a color-coded image, or a crafted/malformed archive.
-  2. Drive a minimal real interaction and confirm actual behavior: for an
-     (a)-type UI library, its coordinate system, event firing order, and CSS
-     defaults, which requires a real browser (jsdom cannot reproduce them);
-     for a (b)-type data format, its per-encoding behavior, which Node
-     alone can confirm.
-  3. Record the result in 1–2 lines in the relevant module's description in
-     `docs/ARCHITECTURE.md`.
-
-  Write mocks and tests only from this step's result, not from assumptions
-  about the library.
+  untrusted external data format (e.g. ZIP), use the `integration-spike`
+  skill for oracle verification before starting `test_writer`. Record the
+  result in 1–2 lines in the relevant module's description in
+  `docs/ARCHITECTURE.md`, and write mocks/tests only from that result, not
+  from assumptions about the library.
 - RED/GREEN evidence must be inspected by `commander`, not assumed:
   environment errors (broken Jest setup, missing packages) are not RED, and
-  a narrow-suite pass is not GREEN if it required weakening a test.
+  a narrow-suite pass is not GREEN if it required weakening a test. The same
+  standard applies to `reviewer`'s own findings: a finding must cite a
+  re-run check (test/build/CI log/browser), not just plausible-sounding
+  reasoning — and a calendar-date difference between a UTC and a local-time
+  reading of the same instant is expected, not a defect, unless the
+  requirement specifically calls for UTC (e.g. `download.ts`'s filename
+  timestamp is deliberately local time; see its `docs/TDD_LOG.md` entry).
 - See "Review limit" below for when to stop routing findings back and ask
   the user instead.
 

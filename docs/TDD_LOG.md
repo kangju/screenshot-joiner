@@ -35,8 +35,11 @@ entry.
   always-loaded `AGENTS.md`/`CLAUDE.md` TDD-loop section down to a pointer
   into `docs/TDD_WORKFLOW.md`; wired in all 8 personal skills #34 named,
   each placed where it's actually read rather than all crammed into the
-  always-loaded file; added evidence-based/UTC-vs-local-time reviewer
-  guidance to
+  always-loaded file (the initial pass covered 6; the remaining 2 —
+  `deploy-smoke-check` for deploy/build/hosting config changes,
+  `agent-docs-lint` after substantial `AGENTS.md`/`CLAUDE.md` edits —
+  landed as `AGENTS.md` Guardrails bullets in a follow-up pass that closed
+  out #34); added evidence-based/UTC-vs-local-time reviewer guidance to
   `docs/TDD_WORKFLOW.md` and `.github/copilot-instructions.md`; confirmed
   `CLAUDE.md` is a symlink to `AGENTS.md`, not a second copy).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing

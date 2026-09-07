@@ -1181,4 +1181,25 @@ terms by design, so the row and dialog title kept `トリミング`.
   `agent-docs-lint`で`docs/TDD_WORKFLOW.md`・`docs/PROMPT_DESIGN.md`・
   `.github/copilot-instructions.md`間の参照整合性を確認
 - Residual risk: なし
-- Commit: 3801d71
+- Commit: 3801d71, 1c05569 (PR #51)
+
+### 2026-09-08 — Issue #46 PROMPT_DESIGN.mdに教訓のプロンプトへの追加基準を明文化
+
+- Requirement: Codexによる全PR・障害履歴解析(討論2ラウンド)で見つかった、
+  「教訓ごとに新しいSKILL・ガードレールを追加していく」アプローチが判断
+  コスト・トークン消費・複雑化を生まないかという論点への回答として、
+  新設 vs 既存拡張の判断基準を`docs/PROMPT_DESIGN.md`に明文化する
+- Change: 既存の設計方針リストに、「再発または重大な欠陥の教訓は、まず
+  既存の契約・回帰テスト・条件付きSKILLへ反映する。新しい常設ルールや
+  SKILLは、既存の配置先では必要な場面に届かない場合に限って追加する」
+  という一文をissue本文の提案どおり追加(既存箇条が英語のため同じ言語で
+  追加)。Codexの結論(現在17個の個人/プロジェクトSKILLは個数自体が問題
+  ではなく、巨大な万能SKILLへの統合や機械的な削減は不要)を踏まえ、
+  今回のissue #43/#44/#45(3件とも「新規SKILLは不要、既存の観点を拡張
+  する程度で十分」という結論だった)の判断パターンを再利用可能な形で
+  残す。`AGENTS.md`へのA/B/C分の個別ガードレール追加は完了条件どおり
+  行わない(意図的なスコープ外)
+- Verification: `full-check`(test/typecheck/lint/build)すべてgreen
+  (文書のみの変更のためテスト内容自体は変更なし)
+- Residual risk: なし
+- Commit: a5d401f

@@ -1180,4 +1180,4 @@ terms by design, so the row and dialog title kept `トリミング`.
   `agent-docs-lint`で`docs/TDD_WORKFLOW.md`・`docs/PROMPT_DESIGN.md`・
   `.github/copilot-instructions.md`間の参照整合性を確認
 - Residual risk: なし
-- Commit: (このコミット)
+- Commit: 3801d71

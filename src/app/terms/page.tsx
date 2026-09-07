@@ -81,6 +81,7 @@ export default function TermsPage() {
           本サービスに関するお問い合わせは、
           <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
             GitHub Issues
+            <span className="visually-hidden">(別タブで開きます)</span>
           </a>
           のみで受け付けます。投稿内容は公開されます。機密情報や個人情報、非公開にしたい画像等を含めないでください。
         </p>

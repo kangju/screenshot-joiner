@@ -39,10 +39,14 @@ describe("TermsPage", () => {
   it("directs contact to GitHub Issues only, with a note that posts are public", () => {
     render(<TermsPage />);
 
-    expect(screen.getByRole("link", { name: /GitHub Issues/ })).toHaveAttribute(
+    const issuesLink = screen.getByRole("link", { name: /GitHub Issues/ });
+    expect(issuesLink).toHaveAttribute(
       "href",
       "https://github.com/kangju/screenshot-joiner/issues",
     );
+    expect(issuesLink).toHaveAttribute("target", "_blank");
+    // Copilotレビュー指摘: target="_blank"リンクは別タブで開く旨をアクセシブルネームに含める
+    expect(issuesLink).toHaveAccessibleName(/別タブで開きます/);
     expect(screen.getByText(/公開されます/)).toBeInTheDocument();
   });
 });

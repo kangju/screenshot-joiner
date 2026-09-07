@@ -41,9 +41,15 @@ entry.
   landed as `AGENTS.md` Guardrails bullets in a follow-up pass that closed
   out #34); added evidence-based/UTC-vs-local-time reviewer guidance to
   `docs/TDD_WORKFLOW.md` and `.github/copilot-instructions.md`; confirmed
-  `CLAUDE.md` is a symlink to `AGENTS.md`, not a second copy), and Issue #29
-  (preview area height capped at 60vh so a tall joined image no longer
-  pushes the save controls far down the page; see the dated entry below).
+  `CLAUDE.md` is a symlink to `AGENTS.md`, not a second copy — the
+  `deploy-smoke-check`/`agent-docs-lint` pair landed in a separate
+  follow-up PR #38, not the original #37), README.md rewritten from
+  leftover Codex-starter boilerplate into an actual product description
+  (Issue #3, PR #39, docs-only so no dedicated log entry), Issue #27
+  (original-size note explaining the background-color gap, see the dated
+  entry below), and Issue #29 (preview area height capped at 60vh so a
+  tall joined image no longer pushes the save controls far down the page;
+  see the dated entry below).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -950,6 +956,25 @@ terms by design, so the row and dialog title kept `トリミング`.
   配置先(本ファイルと`docs/PROMPT_DESIGN.md`)へ移した)
 - Commit: f928d3d, e9ab103 (PR #37)
 
+### 2026-09-07 — Issue #27 「原寸」選択時の余白説明
+
+- Requirement: 異なる幅の画像を「元のサイズ」で縦結合したときにできる背景色の余白が、
+  仕様通りの挙動であることを初見のユーザーにも伝える(docs/REQUIREMENTS.md FR-06)
+- RED: 「元のサイズ」選択時のみ説明文が表示され、他のサイズモードでは表示されないことを
+  検証するテストを追加、要素が存在せず失敗することを確認
+- Change: `src/app/page.tsx`に`state.sizeMode === "original"`の条件付きで既存の
+  `.copyNote`パターンを再利用した説明文`<p>`を追加。Copilotレビューで
+  「`.sizeGroup`(flex)内に置くとボタン群と横並びになりうる」「`.copyNote`は
+  保存・コピー区画専用と文書化されており流用は用途がずれる」の2点を指摘され、
+  注記をflexコンテナの外へ移動し専用の`.sizeModeNote`クラスへ分離した
+- Verification: narrow suite → `page.test.tsx`全体(49件)→ `full-check`
+  (test 217件/typecheck/lint/build)すべてgreen。実ブラウザ(Playwright)で
+  サイズモード切り替えによる表示/非表示、375px幅でボタン群の下に配置される
+  こと、axe-core違反0件、Tab+Enter/Spaceのキーボード操作、320px幅での
+  横スクロール無しを確認(`screenshot-acceptance`で選定した観測点)
+- Residual risk: なし
+- Commit: 503aa98, ed71208 (PR #40)
+
 ### 2026-09-07 — Issue #29 プレビュー高さ制限によるスクロール距離短縮
 
 - Requirement: 画像読み込み後、保存ボタンまでの距離が縦に長い結合結果によって
@@ -965,7 +990,9 @@ terms by design, so the row and dialog title kept `トリミング`.
   percentageのmax-heightが解決されずcanvasが縮小されないことが判明(canvasの
   実測描画高さが親のmax-height:480pxを超えたまま3760pxで変化なし)。
   `previewCanvas`にも同じ60vh値をCSSカスタムプロパティ経由で直接指定する形に
-  修正し、縮小が実際に効くことを再検証で確認した
+  修正し、縮小が実際に効くことを再検証で確認した。Copilotレビューで
+  「`previewCanvas`のフォールバック値60vhが`--preview-max-height`と二重管理に
+  なる」と指摘され、フォールバックを`none`(制限なし)に変更した
 - Verification: narrow suite → `page.test.tsx`全体(49件)→ `full-check`
   (test 217件/typecheck/lint/build)すべてgreen。実ブラウザ(Playwright)で
   (1)通常サイズ画像は縮小されず現状維持、(2)縦長canvas(4000px)が60vh(480px)
@@ -975,4 +1002,4 @@ terms by design, so the row and dialog title kept `トリミング`.
 - Residual risk: 60vhという上限値は実測に基づく初期値であり、実運用での
   体感調整は今回のスコープ外(Issue本文の指示通り、固定保存バー等の追加対応は
   見送り)
-- Commit: 6ec9e47
+- Commit: 6ec9e47, 1b1e624 (PR #42)

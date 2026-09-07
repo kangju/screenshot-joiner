@@ -796,7 +796,7 @@ export default function Home() {
           </section>
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>プレビュー</h2>
-            <div className={styles.preview}>
+            <div className={`${styles.preview} ${styles.previewBounded}`}>
               {state.items.length === 0 && (
                 <div className={styles.previewEmpty}>
                   <span className={styles.previewEmptyIcon} aria-hidden="true">

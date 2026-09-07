@@ -1604,6 +1604,40 @@ describe("project scaffold", () => {
     );
   });
 
+  it("caps the preview area's height so the save controls aren't pushed far down the page (issue #29)", async () => {
+    const user = userEvent.setup();
+    const makeBitmap = (width: number, height: number) =>
+      ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(makeBitmap(200, 150));
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      const preview = await screen.findByRole("img", { name: "結合プレビュー" });
+
+      expect(preview.parentElement).toHaveClass("previewBounded");
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("shows a note explaining the size gap only when the original size mode is selected (issue #27)", async () => {
     const user = userEvent.setup();
     render(<Home />);

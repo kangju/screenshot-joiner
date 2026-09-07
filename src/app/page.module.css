@@ -193,8 +193,21 @@
   border-radius: var(--radius-md);
 }
 
+/* 画像読み込み後、保存操作までの縦スクロール距離が長くなりすぎないよう、
+   プレビュー表示自体の高さをビューポート高さの割合で制限する(出力解像度
+   はcanvasの実寸のままで、表示上の縮小のみ)。max-height: 100%はflexの親が
+   明示的な高さを持たない(max-heightのみでは不十分)と解決されないため、
+   previewCanvas側にも同じvh値を直接指定してcanvasを確実に縮小させる */
+.previewBounded {
+  --preview-max-height: 60vh;
+  max-height: var(--preview-max-height);
+  overflow: hidden;
+}
+
 .previewCanvas {
   max-width: 100%;
+  max-height: var(--preview-max-height, none);
+  width: auto;
   height: auto;
   /* 出力結果の端まで確認できるよう、表示枠と違って角を丸めない */
   border-radius: 0;

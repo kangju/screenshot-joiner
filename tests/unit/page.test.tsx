@@ -1638,23 +1638,31 @@ describe("project scaffold", () => {
     }
   });
 
-  it("shows a note explaining the size gap only when the original size mode is selected (issue #27)", async () => {
-    const user = userEvent.setup();
-    render(<Home />);
+  it.each(["幅を揃える", "高さを揃える", "サイズを指定"])(
+    // 注記<p>を常時マウントしたまま可視状態だけ切り替える(issue #53)。
+    // マウント/アンマウントによる高さジャンプを避けるため、issue #27時点の
+    // 「モード切替でDOMから消える」という前提はここで置き換える。
+    "keeps the size-gap note mounted and toggles its visibility class when switching to %s (issue #27, #53)",
+    async (otherModeLabel) => {
+      const user = userEvent.setup();
+      render(<Home />);
 
-    const noteText = "画像の大きさを変えずに並べます。幅や高さの差は背景色で埋まります";
+      const noteText = "画像の大きさを変えずに並べます。幅や高さの差は背景色で埋まります";
 
-    // デフォルトは「元のサイズ」が選択されているため注記が表示される
-    expect(screen.getByText(noteText)).toBeInTheDocument();
+      // デフォルトは「元のサイズ」が選択されているため、注記は表示されている
+      expect(screen.getByText(noteText)).toHaveClass("sizeModeNote");
+      expect(screen.getByText(noteText)).not.toHaveClass("sizeModeNoteHidden");
 
-    // 他のサイズモードを選択すると注記は表示されない
-    await user.click(screen.getByRole("button", { name: "幅を揃える" }));
-    expect(screen.queryByText(noteText)).not.toBeInTheDocument();
+      // 他のサイズモードへ切り替えても要素はDOM上に残り、非表示クラスだけが付く
+      await user.click(screen.getByRole("button", { name: otherModeLabel }));
+      expect(screen.getByText(noteText)).toHaveClass("sizeModeNote", "sizeModeNoteHidden");
 
-    // 「元のサイズ」に戻すと再度表示される
-    await user.click(screen.getByRole("button", { name: "元のサイズ" }));
-    expect(screen.getByText(noteText)).toBeInTheDocument();
-  });
+      // 「元のサイズ」に戻すと非表示クラスが外れる
+      await user.click(screen.getByRole("button", { name: "元のサイズ" }));
+      expect(screen.getByText(noteText)).toHaveClass("sizeModeNote");
+      expect(screen.getByText(noteText)).not.toHaveClass("sizeModeNoteHidden");
+    },
+  );
 
   it("fits every image to the first image's width when fit-width is selected", async () => {
     const user = userEvent.setup();

@@ -8,8 +8,10 @@ below fits, adapting its fields as needed, while keeping each field short.
 The dated
 entries below are append-only and grow without bound — do not read them in
 full for routine work. Read the "Current status" index below instead;
-search by requirement ID (e.g. `grep "P3-03" docs/TDD_LOG.md`) and read only
-the matching entry when you need history for a specific past decision. The
+search by requirement ID or GitHub issue number (e.g.
+`grep "P3-03" docs/TDD_LOG.md` or `grep "Issue #23" docs/TDD_LOG.md`) and
+read only the matching entry when you need history for a specific past
+decision. The
 one exception to append-only: if a later entry overturns an earlier entry's
 conclusion, prefix the earlier entry's body with a `⚠️ Correction:` line
 pointing to the later entry's date — never delete or rewrite the earlier
@@ -28,7 +30,15 @@ entry.
   indicator in 結合設定; PNG/JPEG format controls relocated into the
   renamed 保存・コピー section, plus a Copilot-review follow-up fixing a
   sub-10,000px total-pixel-count rounding-to-zero bug and separating the
-  copy-format note into its own `.copyNote` class).
+  copy-format note into its own `.copyNote` class), and GitHub Issues
+  #35/#34 (a new conditional `screenshot-acceptance` skill; trimmed the
+  always-loaded `AGENTS.md`/`CLAUDE.md` TDD-loop section down to a pointer
+  into `docs/TDD_WORKFLOW.md`; wired in all 8 personal skills #34 named,
+  each placed where it's actually read rather than all crammed into the
+  always-loaded file; added evidence-based/UTC-vs-local-time reviewer
+  guidance to
+  `docs/TDD_WORKFLOW.md` and `.github/copilot-instructions.md`; confirmed
+  `CLAUDE.md` is a symlink to `AGENTS.md`, not a second copy).
 - Open residual risks: ZIP CRC-32/encryption is not verified by parsing
   the central directory — corrupted/encrypted entries rely on the
   downstream image-signature/decode check instead, and this substitution
@@ -37,7 +47,8 @@ entry.
   cross-browser/device checks (P6-01/02/03) used WebKit/Firefox plus
   touch-viewport emulation as a proxy, reported as such, not as equivalent
   to real-device QA; the `wrangler.jsonc` static-assets deploy has not yet
-  been confirmed against a real Cloudflare deploy; no dedicated
+  been confirmed against a real Cloudflare deploy (run `deploy-smoke-check`
+  before the next change to deploy/build/hosting config); no dedicated
   tap-to-expand affordance for a truncated list-row filename (relies on
   `title`); crop terminology ("トリミング" for the feature/title, "切り抜き"
   for the dialog's confirm action) intentionally coexists per
@@ -52,6 +63,10 @@ Use the **normal cycle** template for an ordinary RED→GREEN→REVIEW loop.
 Use the **major incident** template when a later cycle overturns an earlier
 approved conclusion, or a defect surfaces outside the normal unit-test loop
 (external review, browser verification, a production/deploy failure).
+
+In the Verification/Residual risk fields, say so explicitly whenever a check
+could not actually be run (no real device, a mocked library, etc.) and why —
+never word it so it reads as full coverage when it wasn't.
 
 ### Normal cycle
 
@@ -879,3 +894,53 @@ terms by design, so the row and dialog title kept `トリミング`.
   `role="group"`未付与は上のエントリの通り引き続き非ブロッキングの
   改善候補
 - Commit: 2692057 (PR #36)
+
+### 2026-09-07 — Issues #35, #34: 受け入れ検証スキル追加とプロンプト/レビュー指示の整理(process/infra)
+
+- Requirement: GitHub Issue #35(優先度1、過去のcropperjs統合・P3-09フォーカストラップ・
+  #20-23・本セッションのCopilot誤指摘を教訓に、条件付き受け入れ検証SKILLの追加と
+  常時指示/引き継ぎの圧縮、reviewer側の検証基準の明記)と、関連するIssue #34(優先度2、
+  a11y-check等8件の個人SKILLへの導線が`AGENTS.md`/`CLAUDE.md`/`docs/TDD_WORKFLOW.md`に
+  欠けている件)を、同一ファイル群を編集するため1つの変更としてまとめて対応。製品コード・
+  テストは対象外
+- Change:
+  - 新規`.claude/skills/screenshot-acceptance/SKILL.md`(本文674字、日本語)を追加。
+    UI/画像処理/制限・非同期処理の変更時に受け入れシナリオと観測点を選ぶ条件付きSKILL
+  - `AGENTS.md`(`CLAUDE.md`はこのファイルへのシンボリックリンクであり、別ファイルへの
+    複製ではないことを本サイクルで確認 — #34項目8が想定していた「2ファイル間のドリフト」
+    はそもそも構造上発生し得ないため、その前提での追記は行わず、代わりに
+    `docs/PROMPT_DESIGN.md`にこの事実と`agent-docs-lint`の実際の役割(他の参照ドキュメント
+    間の整合確認)を記録した)のGuardrails節に`a11y-check`/`spec-boundary-check`/
+    `fresh-branch`/`address-pr-feedback`への短い参照を追加し、## TDD loop節の手順列挙
+    (旧1〜5番+バッチ/レーン段落)を`docs/TDD_WORKFLOW.md`への条件付き参照に圧縮、
+    `screenshot-acceptance`への言及を追加。## Done節に`browser-check`を追記
+  - `docs/TDD_WORKFLOW.md`: High-risk gateの手書きoracle検証手順を`integration-spike`
+    SKILLへの参照に置き換え(ARCHITECTURE.mdへの記録手順のみ残す)。標準引き継ぎの
+    項目リストに`screenshot-acceptance`で選んだシナリオを追加。reviewerのRED/GREEN
+    証拠確認の記述を拡張し、reviewer自身の指摘も再実行した証拠に基づくことと、意図した
+    ローカル/UTC時刻差を単独で不具合と判断しないことを明記
+  - `.github/copilot-instructions.md`に同内容の2点(証拠ベースの指摘、UTC/ローカル時刻差の
+    誤認防止)を追記
+  - `docs/TDD_LOG.md`(本ファイル): 冒頭のgrep例にGitHub issue番号を追加、Entry template
+    に「未実施の検証は理由とともに明記する」旨を追加、wrangler.jsonc残存リスクに
+    `deploy-smoke-check`への参照を追加(#34項目7、deploy-smoke-check自体は
+    `AGENTS.md`ではなくこちらに配置)
+  - `.claude/skills/create-pr/SKILL.md`: 差分確認をmerge-base基準
+    (`git diff "$(git merge-base main HEAD)"..HEAD`)に変更し、`gh pr create`の本文を
+    一時ファイル経由の`--body-file`に変更(#34項目6)
+  - `.claude/skills/full-check/SKILL.md`は変更なし(#34項目3の「唯一の参照元」「有効な
+    結果の再利用」は既に明記済みと確認)
+- 文字数計測(#35完了条件): 「常時指示」=`AGENTS.md`(`wc -m`) 3859→3706字(-153)。
+  「標準引き継ぎ」=`docs/TDD_WORKFLOW.md`のPrimary-agent protocol節の引き継ぎ項目
+  ブレット単体 367→456字(+89、`screenshot-acceptance`連携の追記分)。合計
+  4226→4162字で64字減少(#35完了条件「変更前より減っている」を満たす)。新規SKILL本文
+  674字は上記合計に含めない別枠として計上
+- Verification: 製品コード・テストへの変更がないため通常のtest_writer/implementer/
+  reviewerループは適用せず直接編集。`agent-docs-lint`・`full-check`
+  (test/typecheck/lint/build)・`claude doctor`(非対話版ヘルスチェック)を実行して結果を
+  確認(詳細は本サイクルのPR本文に記載)
+- Residual risk: なし。#34の8項目・#35の実施内容1〜3はすべて反映済み(配置は#34/#35の
+  文面が名指しした箇所と一部異なるが、常時指示の文字数削減という#35自体の完了条件を
+  優先し、`deploy-smoke-check`と`agent-docs-lint`関連の記述はより自然かつ低コストな
+  配置先(本ファイルと`docs/PROMPT_DESIGN.md`)へ移した)
+- Commit: f928d3d, e9ab103 (PR #37)

@@ -15,14 +15,6 @@ agent you spawn on top of the others. Within one lane, `test_writer` →
 test and implementation work modify the same files. Across lanes that touch
 disjoint files, pipelines may run concurrently — see "Parallel lanes" below.
 
-When this protocol is actually executed as a Workflow-tool script (only once
-there's opted-in, multi-agent work to run), `commander` maps to a first
-phase — either a structured `agent()` call that returns the lane partition,
-or plain script logic — feeding a `parallel()` of per-lane `pipeline()`
-calls, with the log/full-check merge as a final sequential step. The Agents
-table and the two flowcharts above are the source of truth for that
-script's shape; there is no separate skill for writing it.
-
 ## Parallel lanes
 
 Two behaviors are **parallel-safe** only if their expected source and test
@@ -108,13 +100,31 @@ This section only adds what they don't show:
 - RED/GREEN evidence must be inspected by `commander`, not assumed:
   environment errors (broken Jest setup, missing packages) are not RED, and
   a narrow-suite pass is not GREEN if it required weakening a test. The same
-  standard applies to `reviewer`'s own findings: a finding must cite a
-  re-run check (test/build/CI log/browser), not just plausible-sounding
-  reasoning — and a calendar-date difference between a UTC and a local-time
-  reading of the same instant is expected, not a defect, unless the
-  requirement specifically calls for UTC (e.g. `src/lib/download.ts`'s
-  filename timestamp is deliberately local time; see its `docs/TDD_LOG.md`
-  entry).
+  standard applies to `reviewer`'s own findings, split by what kind of claim
+  is being made: a runtime-behavior finding (a bug, a regression, a broken
+  interaction) must cite a re-run check (test/build/CI log/browser) — and a
+  calendar-date difference between a UTC and a local-time reading of the same
+  instant is expected, not a defect, unless the requirement specifically
+  calls for UTC (e.g. `src/lib/download.ts`'s filename timestamp is
+  deliberately local time; see its `docs/TDD_LOG.md` entry). A
+  statically-decidable finding (a CSS class reused for the wrong purpose,
+  wording that doesn't match what a nearby comment says it's for, a stale
+  cross-reference) needs no re-run — citing the exact location and the
+  concrete mismatch is sufficient evidence on its own. A finding that is
+  neither reproduced nor statically decidable is a hypothesis, not a
+  finding — say so explicitly rather than presenting a guess as either kind
+  of evidence. This loosens *what counts as* evidence, not *whether* it's
+  required.
+- **Cross-cutting check**: when fixing a valid finding, check the other call
+  sites, similar processing, or reference docs that shared the assumption
+  the finding broke, and add "the property the original code already
+  satisfied still holds" to that fix's acceptance criteria — not just "the
+  finding's specific complaint is gone." (Example: a memory-capped preview
+  fix that shrank the *drawn* resolution also shrank the *layout* size it
+  fed back, silently breaking the existing guarantee that rotating an image
+  doesn't change its apparent size — see `docs/TDD_LOG.md`'s 2026-09-05
+  round-2 entry.) Scope this to the call sites, processing, and docs
+  actually related to the change — not a full-codebase audit on every fix.
 - See "Review limit" below for when to stop routing findings back and ask
   the user instead.
 
@@ -160,4 +170,13 @@ The maximum is three REVIEW → correction cycles per behavior. When exceeded, s
 - attempted fixes
 - current failing checks
 - decision needed from the user
+
+**Minor-only cutoff**: once every Critical/Major finding is resolved and the
+behavior meets its acceptance criteria, outstanding Minor findings alone do
+not force another correction round. Fix the ones that are cheap to fix in
+the round already underway; for anything left over, record it (in the
+`docs/TDD_LOG.md` entry, with the reason it was left) rather than silently
+dropping it or looping again to chase it down. This is separate from the
+three-cycle cap above, which still applies in full when Critical/Major
+findings are in play.
 

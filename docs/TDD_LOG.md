@@ -1121,4 +1121,4 @@ terms by design, so the row and dialog title kept `トリミング`.
   書かれた当時として正確な記述のため変更していない。⚠️ Correctionの対象は
   「後の記述が前の記述の結論を覆す」場合であり、今回はCurrent statusという
   「常に最新化する」節の更新であるため対象外と判断)
-- Commit: (このコミット)
+- Commit: 4340d09

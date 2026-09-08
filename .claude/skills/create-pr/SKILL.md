@@ -34,6 +34,11 @@ description: Push the current branch and open (or update) a GitHub pull request 
    ファイルが紛れ込んだ実例あり)。`git diff "$(git merge-base main HEAD)"..HEAD --stat`は必ず
    このステップの後に確認する。
 
+   この同期手順はパーソナルスキル`fresh-branch`の同期ロジックと意図的に
+   重複している(理由: `create-pr`はプロジェクトスキル単体で完結させ、
+   `fresh-branch`未導入の環境でも動作させるため)。`fresh-branch`側の同期
+   ロジックが改良された場合はここも見直すこと。
+
 3. **`full-check`スキルを実行する。** test/typecheck/lint/buildが全て
    greenであることを確認してからPRを開く(CLAUDE.mdの「Done」基準)。
    赤い状態でPRを出さない。

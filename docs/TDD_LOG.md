@@ -1,145 +1,29 @@
-# TDD Log
+# TDD Log (frozen archive)
 
-Append one entry after each completed lane (a lane may cover several
-similar cases — see `docs/TDD_WORKFLOW.md`'s log-entry granularity rule),
-plus for other significant process/infra fixes and external reviews (e.g.
-the Cloudflare deploy entry below) — pick whichever of the two templates
-below fits, adapting its fields as needed, while keeping each field short.
-The dated
-entries below are append-only and grow without bound — do not read them in
-full for routine work. Read the "Current status" index below instead;
-search by requirement ID or GitHub issue number (e.g.
-`grep "P3-03" docs/TDD_LOG.md` or `grep "Issue #23" docs/TDD_LOG.md`) and
-read only the matching entry when you need history for a specific past
-decision. The
-one exception to append-only: if a later entry overturns an earlier entry's
-conclusion, prefix the earlier entry's body with a `⚠️ Correction:` line
-pointing to the later entry's date — never delete or rewrite the earlier
-entry.
+This file is frozen as of 2026-09-08 (Issue #54: a single ever-growing
+append-only file made unrelated Current-status updates and entry additions
+collide on the same lines at merge time). Its 70 dated entries, starting
+at the first `### YYYY-MM-DD` heading below, are preserved byte-for-byte
+and are not appended to or otherwise rewritten going forward. The one
+exception, carried over unchanged from before: prefixing an existing entry
+with a `⚠️ Correction:` line when a later entry overturns its conclusion —
+the three existing examples (search for `⚠️ Correction`) predate this
+freeze and are left as they are; a new Correction targeting an entry here
+still follows the stronger linking convention in
+`docs/tdd-log/README.md`.
 
-## Current status (the one section of this file that gets edited in place, not appended to)
+- Current status (Completed / Open residual risks / Last full-check
+  result), always edited in place: `docs/TDD_LOG_STATUS.md`.
+- New TDD-cycle and major-incident entries recorded after this freeze
+  (Issue #54), one file per entry: `docs/tdd-log/README.md` (naming,
+  collision handling, templates, the Correction convention). This archive
+  still has some entries dated 2026-09-08 (the freeze happened partway
+  through that day, e.g. Issue #53's entry below predates it) — the split
+  is which side of this freeze an entry was recorded on, not its date.
+- To search both this archive and the new entries by requirement ID or
+  GitHub issue number: `rg -n '<pattern>' docs/TDD_LOG.md docs/tdd-log/`.
 
-- Completed: Phase 0 through Phase 6 (all P0-xx through P6-xx behaviors),
-  plus the post-release Cloudflare Workers static-assets deploy fix,
-  P5-06 (timestamped download filename), P2-07/08/09 (ImageListRow
-  two-row layout: always-visible filename, contain-fit thumbnails, mobile
-  rotate/crop labels), P3-09 (crop dialog numeric-field regroup and
-  focus trap), and GitHub Issues #22/#23/#20/#21 (mobile touch-appropriate
-  guidance copy; output-size dimension/megapixel display split; button
-  group labels, plain-language wording, and non-color pressed-state
-  indicator in 結合設定; PNG/JPEG format controls relocated into the
-  renamed 保存・コピー section, plus a Copilot-review follow-up fixing a
-  sub-10,000px total-pixel-count rounding-to-zero bug and separating the
-  copy-format note into its own `.copyNote` class), and GitHub Issues
-  #35/#34 (a new conditional `screenshot-acceptance` skill; trimmed the
-  always-loaded `AGENTS.md`/`CLAUDE.md` TDD-loop section down to a pointer
-  into `docs/TDD_WORKFLOW.md`; wired in all 8 personal skills #34 named,
-  each placed where it's actually read rather than all crammed into the
-  always-loaded file (the initial pass covered 6; the remaining 2 —
-  `deploy-smoke-check` for deploy/build/hosting config changes,
-  `agent-docs-lint` after substantial `AGENTS.md`/`CLAUDE.md` edits —
-  landed as `AGENTS.md` Guardrails bullets in a follow-up pass that closed
-  out #34); added evidence-based/UTC-vs-local-time reviewer guidance to
-  `docs/TDD_WORKFLOW.md` and `.github/copilot-instructions.md`; confirmed
-  `CLAUDE.md` is a symlink to `AGENTS.md`, not a second copy — the
-  `deploy-smoke-check`/`agent-docs-lint` pair landed in a separate
-  follow-up PR #38, not the original #37), README.md rewritten from
-  leftover Codex-starter boilerplate into an actual product description
-  (Issue #3, PR #39, docs-only so no dedicated log entry), Issue #27
-  (original-size note explaining the background-color gap, see the dated
-  entry below), Issue #29 (preview area height capped at 60vh so a
-  tall joined image no longer pushes the save controls far down the page;
-  see the dated entry below), Issue #41 (new `/terms/` static page plus
-  a site-wide footer linking to it and to the GitHub repository, both
-  opening in a new tab so in-progress edits on the home page aren't lost;
-  see the two dated entries below), Issue #32 (non-obvious-only
-  Japanese comments added to `ImageList.tsx`/`zip-client.ts`/`render.ts`;
-  see the dated entry below), and Issue #53 (the size-mode note is now
-  always mounted with a `visibility: hidden`-toggling class instead of
-  being conditionally rendered, so switching size modes no longer jumps
-  the gap/background-color fields or preview; see the dated entry below).
-- Open residual risks: ZIP CRC-32/encryption is not verified by parsing
-  the central directory — corrupted/encrypted entries rely on the
-  downstream image-signature/decode check instead, and this substitution
-  has not been confirmed with the user (see `docs/Question.md` P4-04);
-  FR-06's three sizing sub-decisions (initial size mode on direction
-  switch, which image is the width/height-fit reference, which axis
-  "custom" sets) are implemented per an interim reading, but that reading
-  itself is unconfirmed — spec-level sign-off is still pending, not just
-  implementation (see `docs/Question.md`'s three FR-06 entries; "implemented"
-  here does not mean "spec agreed"); real Safari and real iOS/Android
-  devices were never available — Phase 6's cross-browser/device checks
-  (P6-01/02/03) used WebKit/Firefox plus touch-viewport emulation as a
-  proxy, reported as such, not as equivalent to real-device QA; the
-  `wrangler.jsonc` static-assets deploy has a bot-reported build/deploy
-  success for commit `4a33de7a` (the `cloudflare-workers-and-pages[bot]`
-  account's "Deployment successful" comment on PR #8), but no functional
-  check against the live URL has been recorded anywhere; this is recorded
-  as build-success evidence only, not as equivalent to a working-app
-  confirmation (run
-  `deploy-smoke-check` before the next change to deploy/build/hosting
-  config); no dedicated tap-to-expand affordance for a truncated list-row
-  filename (relies on `title`); crop terminology ("トリミング" for the
-  feature/title, "切り抜き" for the dialog's confirm action) intentionally
-  coexists per `docs/REQUIREMENTS.md` FR-04, not a residual gap to close.
-- Last full-check result: all four checks (`test` / `typecheck` / `lint` /
-  `build`) green, per the most recent dated entry at the bottom of this
-  file.
-
-## Entry template
-
-Use the **normal cycle** template for an ordinary RED→GREEN→REVIEW loop.
-Use the **major incident** template when a later cycle overturns an earlier
-approved conclusion, or a defect surfaces outside the normal unit-test loop
-(external review, browser verification, a production/deploy failure).
-
-In the Verification/Residual risk fields, say so explicitly whenever a check
-could not actually be run (no real device, a mocked library, etc.) and why —
-never word it so it reads as full coverage when it wasn't.
-
-A provisional reading of an ambiguous requirement (tracked in
-`docs/Question.md`) is not the same as an approved spec decision — word the
-Requirement/Change fields so a later reader can tell "implemented per an
-interim reading, still awaiting sign-off" apart from "spec confirmed."
-Verification results should name the commit (or PR) they were checked
-against and how far the check actually went (e.g. "bot-reported deploy
-success" vs. "live URL opened and exercised") — these are different levels
-of evidence and reporting one as the other misleads a later reader. When
-later evidence changes what "Current status" should say, update that
-section in place immediately (it is edited in place, not appended to); the
-dated entry that was accurate at the time it was written stays as-is unless
-it meets the ⚠️ Correction bar above.
-
-### Normal cycle
-
-```text
-### YYYY-MM-DD — Requirement ID and behavior
-
-- Requirement: acceptance criterion covered
-- RED: key point of the failing test
-- Change: summary of the production change
-- Verification: full-check result or narrow suite result
-- Residual risk: none or concise note
-- Commit: short SHA or PR reference
-```
-
-### Major incident
-
-```text
-### YYYY-MM-DD — Title describing the incident
-
-- Wrong assumption: what was believed and why it was wrong
-- Minimal repro: smallest condition that reproduces the defect
-- Root cause: underlying mechanism
-- Permanent fix: the change that prevents recurrence
-- Regression test: reference to the test that now guards this
-```
-
-Keep each **normal cycle** field to 1-2 sentences; a long investigation
-belongs in `docs/Question.md` or a commit message, not spelled out here —
-link to it instead of inlining it. A **major incident** entry may run
-longer, since the point is to preserve enough of the wrong assumption, the
-repro, and the root cause for a future reader to avoid repeating it.
+---
 
 ### 2026-09-04 — P0-02 Editor state and reducer foundation
 

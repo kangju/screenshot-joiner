@@ -30,7 +30,7 @@ sections too, not just its own FR.
 
 ## TDD loop
 
-For each bounded behavior, run `test_writer` → `implementer` → `reviewer` sequentially; never overlap writers within a lane. Do not weaken tests to get GREEN, and reviewer never edits. When the behavior touches UI, image processing, or limits/async handling, use `screenshot-acceptance` at planning time to pick the acceptance scenarios and observation points, then hand the selection to each agent. Log approved cycles in `docs/TDD_LOG.md` — its dated entries are append-only and large; read only its "Current status" section (kept up to date in place, not appended to) plus any entry you grep for by requirement ID or GitHub issue number.
+For each bounded behavior, run `test_writer` → `implementer` → `reviewer` sequentially; never overlap writers within a lane. Do not weaken tests to get GREEN, and reviewer never edits. When the behavior touches UI, image processing, or limits/async handling, use `screenshot-acceptance` at planning time to pick the acceptance scenarios and observation points, then hand the selection to each agent. Log approved cycles as one file per entry under `docs/tdd-log/` (see `docs/tdd-log/README.md` for naming and templates) — `docs/TDD_LOG.md` is a frozen archive of entries recorded before that split (Issue #54) and takes no new ones. Read `docs/TDD_LOG_STATUS.md`'s "Current status" (kept up to date in place, not appended to) instead of either log for routine work, and grep both `docs/TDD_LOG.md` and `docs/tdd-log/` by requirement ID or GitHub issue number when you need a specific past entry.
 
 Full protocol — roles, RED/GREEN rules, batch/lane partitioning, the high-risk gate, and the review-round limit — is in `docs/TDD_WORKFLOW.md`; read it before starting any TDD cycle.
 

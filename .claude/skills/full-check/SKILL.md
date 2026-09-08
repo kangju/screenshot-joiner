@@ -39,6 +39,7 @@ npm run build
 State plainly which of the four passed/failed — don't paste full command
 output unless something failed and the failure detail matters. On full
 green after reviewer approval, that's the signal the cycle (or a completed
-feature) is ready to log in `docs/TDD_LOG.md` per its existing template —
-this skill does not write that entry itself, since the log entry requires
-judgment about what changed and why, not a fixed procedure.
+feature) is ready to log as a new file under `docs/tdd-log/` per its
+existing templates (`docs/TDD_LOG.md` is a frozen archive and takes no new
+entries) — this skill does not write that entry itself, since the log
+entry requires judgment about what changed and why, not a fixed procedure.

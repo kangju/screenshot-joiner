@@ -1,7 +1,10 @@
 # TDD log entries (one file per entry)
 
-This directory holds TDD-cycle and major-incident log entries from
-2026-09-08 onward, one file per entry. It replaces appending to
+This directory holds TDD-cycle and major-incident log entries recorded
+after Issue #54's freeze of `docs/TDD_LOG.md`, one file per entry (the
+frozen file still has some entries dated 2026-09-08, since the freeze
+happened partway through that day — the split is which side of it an
+entry was recorded on, not its date). It replaces appending to
 `docs/TDD_LOG.md`, which is now frozen (see Issue #54: a single
 ever-growing append-only file still let unrelated Correction insertions and
 concurrent appends collide, and gave every entry the same merge-conflict

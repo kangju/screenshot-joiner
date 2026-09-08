@@ -14,9 +14,12 @@ still follows the stronger linking convention in
 
 - Current status (Completed / Open residual risks / Last full-check
   result), always edited in place: `docs/TDD_LOG_STATUS.md`.
-- New TDD-cycle and major-incident entries, one file per entry, from
-  2026-09-08 onward: `docs/tdd-log/README.md` (naming, collision handling,
-  templates, the Correction convention).
+- New TDD-cycle and major-incident entries recorded after this freeze
+  (Issue #54), one file per entry: `docs/tdd-log/README.md` (naming,
+  collision handling, templates, the Correction convention). This archive
+  still has some entries dated 2026-09-08 (the freeze happened partway
+  through that day, e.g. Issue #53's entry below predates it) — the split
+  is which side of this freeze an entry was recorded on, not its date.
 - To search both this archive and the new entries by requirement ID or
   GitHub issue number: `rg -n '<pattern>' docs/TDD_LOG.md docs/tdd-log/`.
 

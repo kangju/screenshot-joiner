@@ -8,9 +8,12 @@ same lines).
 
 Dated history lives elsewhere and is not duplicated here:
 
-- Entries recorded before 2026-09-08: the frozen `docs/TDD_LOG.md` (search
-  it by requirement ID or GitHub issue number).
-- Entries recorded from 2026-09-08 onward: one file per entry under
+- Entries recorded before the Issue #54 freeze: the frozen `docs/TDD_LOG.md`
+  (search it by requirement ID or GitHub issue number). Note this archive
+  still has entries dated 2026-09-08 — the freeze happened partway through
+  that day, so the split is which side of it an entry was recorded on, not
+  its date.
+- Entries recorded after that freeze: one file per entry under
   `docs/tdd-log/` — see `docs/tdd-log/README.md` for naming, templates, and
   the Correction-linking convention.
 - To search both at once: `rg -n '<pattern>' docs/TDD_LOG.md docs/tdd-log/`.

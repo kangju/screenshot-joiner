@@ -1977,6 +1977,11 @@ describe("project scaffold", () => {
       .spyOn(HTMLCanvasElement.prototype, "toBlob")
       .mockImplementation((callback: BlobCallback) => callback(blob));
     const createObjectURLMock = jest.fn(() => "blob:mock-url");
+    // jsdomのURLにはcreateObjectURL/revokeObjectURLが元々存在せずjest.spyOnが
+    // 使えないため、Object.definePropertyで追加した上で元の値をfinallyで
+    // 復元する(他テストへ副作用を与えないため)
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
     Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURLMock });
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: jest.fn() });
     const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
@@ -2006,6 +2011,14 @@ describe("project scaffold", () => {
     } finally {
       clickSpy.mockRestore();
       toBlobSpy.mockRestore();
+      Object.defineProperty(URL, "createObjectURL", {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {
           configurable: true,

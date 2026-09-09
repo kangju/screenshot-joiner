@@ -457,14 +457,21 @@ export default function Home() {
     }
 
     dispatch({ type: "items/remove", id });
+
+    // 直前の出力エラー(例: カスタムサイズが小さすぎる)は一覧が空になれば
+    // 意味を持たなくなるため、表示を消しておく(削除方法(個別/一括)に
+    // 関わらず一貫させる。ただしuseEffectでの同期setStateは
+    // react-hooks/set-state-in-effectにより禁止されているため、
+    // 「一覧が空になる」ことが確定するこのイベントハンドラ内で行う)
+    if (state.items.length === 1) {
+      setOutputError(null);
+    }
   };
 
   const handleClear = () => {
     state.items.forEach((item) => item.bitmap.close());
     ownedBitmapsRef.current.clear();
     dispatch({ type: "items/clear" });
-    // 直前の出力エラー(例: カスタムサイズが小さすぎる)は一覧が空になれば
-    // 意味を持たなくなるため、表示を消しておく
     setOutputError(null);
   };
 

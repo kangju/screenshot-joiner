@@ -1921,6 +1921,46 @@ describe("project scaffold", () => {
     }
   });
 
+  it("clears the output-size error alert when the last remaining image is removed individually (not via 'すべて削除')", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "thin.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("thin.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "1");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+      await screen.findByRole("alert");
+
+      await user.click(screen.getByRole("button", { name: "削除: thin.png" }));
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("saves normally once a custom size that collapsed the layout to 0px is corrected", async () => {
     const user = userEvent.setup();
     // 幅10万×高さ1。customSize="1"だと高さが丸めで0pxになり無効だが、

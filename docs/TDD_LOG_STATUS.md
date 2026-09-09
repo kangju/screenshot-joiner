@@ -75,6 +75,10 @@ lines the way the old single-paragraph list did.
   fields or preview). Detail: `docs/TDD_LOG.md`'s dated entry.
 - Issue #54 (this file, `docs/tdd-log/`, and the `docs/TDD_LOG.md` freeze
   themselves). Detail: `docs/tdd-log/`'s dated entry for this change.
+- Issue #61 (custom size below 1px collapsed the output to 0px and failed
+  saving/copying silently; also covers the case where the overall layout
+  stays positive but one image's placement rounds to 0px). Detail:
+  `docs/tdd-log/`'s 2026-09-09 dated entry.
 
 ## Open residual risks
 

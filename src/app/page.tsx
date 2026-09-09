@@ -16,7 +16,7 @@ import { ImageList } from "@/components/image-editor/ImageList";
 import { buildTimestampedFilename, downloadBlob } from "@/lib/download";
 import { getTransformedSize, renderTransformedImage } from "@/lib/image-transform";
 import { isSupportedImageFile } from "@/lib/image-signature";
-import { exceedsPixelThreshold } from "@/lib/output-guard";
+import { exceedsPixelThreshold, hasInvalidOutputDimensions } from "@/lib/output-guard";
 import { copyPngBlobToClipboard } from "@/lib/clipboard";
 import { DEFAULT_ZIP_LIMITS } from "@/lib/validation";
 import { fitToHeight, fitToWidth, type Size } from "@/lib/resize";
@@ -463,6 +463,9 @@ export default function Home() {
     state.items.forEach((item) => item.bitmap.close());
     ownedBitmapsRef.current.clear();
     dispatch({ type: "items/clear" });
+    // 直前の出力エラー(例: カスタムサイズが小さすぎる)は一覧が空になれば
+    // 意味を持たなくなるため、表示を消しておく
+    setOutputError(null);
   };
 
   const handleDirectionChange = (direction: EditorState["direction"]) => {
@@ -517,7 +520,9 @@ export default function Home() {
   const handleCustomSizeChange = (event: ChangeEvent<HTMLInputElement>) => {
     const size = Number(event.target.value);
 
-    if (Number.isFinite(size) && size > 0) {
+    // UI側のmin={1}と一致させる: 1未満(0.1等)は丸めで出力0pxになり保存が
+    // 無言で失敗するため、入力の時点で最後の有効値のまま保持する
+    if (Number.isFinite(size) && size >= 1) {
       dispatch({ type: "settings/customSize", size });
     }
   };
@@ -533,6 +538,11 @@ export default function Home() {
       dispatch({ type: "settings/jpegQuality", quality });
     }
   };
+
+  // 保存・コピーの失敗をユーザーに知らせるためのローカル状態。reducerの
+  // state.errorではなく独立させている(reducerに足すとeditor.tsの変更範囲が
+  // 広がり、初期サイズモードなど他の変更と衝突しやすくなるため)
+  const [outputError, setOutputError] = useState<string | null>(null);
 
   // ダウンロード・コピー共通: プレビューと異なり縮小せず、実寸のレイアウトで
   // 描画したcanvasを返す。巨大な出力になる場合はcanvas確保前に警告する。
@@ -560,6 +570,18 @@ export default function Home() {
         ? calculateVerticalLayout(sizes, state.gap)
         : calculateHorizontalLayout(sizes, state.gap);
 
+    // 100MP警告(「確認すれば続行可能な警告」)より前に判定する: 丸め後の
+    // 寸法が0px以下やNaNになる不正な入力(例: カスタムサイズに0.1)は
+    // 「処理不能なエラー」であり、確認ダイアログを出す対象ではない。
+    // 全体の寸法だけでなく、個別画像のplacementが丸めで0pxになる場合も
+    // 検出する(全体は正でも特定の画像だけ見えなくなることがあるため)
+    if (hasInvalidOutputDimensions(layout)) {
+      setOutputError(
+        "出力サイズが小さすぎるため保存できません。カスタムサイズを1px以上にしてください。",
+      );
+      return null;
+    }
+
     // 巨大なcanvasを確保する前に警告し、続行するかどうかをユーザーに確認する
     if (exceedsPixelThreshold({ width: layout.width, height: layout.height })) {
       const proceed = window.confirm(
@@ -570,6 +592,8 @@ export default function Home() {
         return null;
       }
     }
+
+    setOutputError(null);
 
     // ここまでは純粋なサイズ計算のみ。承認された場合にのみ、実際に
     // 変換canvas(クロップ・回転済みの中間canvas)を確保・描画する
@@ -605,6 +629,8 @@ export default function Home() {
         (blob) => {
           if (blob) {
             downloadBlob(blob, buildTimestampedFilename("joined-image", "jpg"));
+          } else {
+            setOutputError("画像の生成に失敗しました。もう一度お試しください。");
           }
         },
         "image/jpeg",
@@ -614,6 +640,8 @@ export default function Home() {
       canvas.toBlob((blob) => {
         if (blob) {
           downloadBlob(blob, buildTimestampedFilename("joined-image", "png"));
+        } else {
+          setOutputError("画像の生成に失敗しました。もう一度お試しください。");
         }
       }, "image/png");
     }
@@ -633,6 +661,7 @@ export default function Home() {
 
     canvas.toBlob(async (blob) => {
       if (!blob) {
+        setOutputError("画像の生成に失敗しました。もう一度お試しください。");
         return;
       }
 
@@ -889,6 +918,11 @@ export default function Home() {
               )}
             </div>
             <p className={styles.copyNote}>コピーはPNG形式です</p>
+            {outputError && (
+              <p role="alert" className={styles.alert}>
+                {outputError}
+              </p>
+            )}
             {copyStatus && (
               <p aria-live="polite" className={styles.status}>
                 {copyStatus === "copied"

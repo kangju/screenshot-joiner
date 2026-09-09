@@ -89,6 +89,11 @@ lines the way the old single-paragraph list did.
   display scale is now per-axis, flooring only the degenerate axis).
   Detail: `docs/tdd-log/`'s 2026-09-09 dated entry (includes an
   `integration-spike` result also noted in `docs/ARCHITECTURE.md`).
+- Issue #64 (the initial `sizeMode` didn't match FR-06's documented default
+  for the initial vertical direction; resolved the previously-unconfirmed
+  `docs/Question.md` reading with the user — Option A — and changed the
+  initial value to `"fitWidth"`, without adding auto-reset on direction
+  switch). Detail: `docs/tdd-log/`'s 2026-09-09 dated entry.
 
 ## Open residual risks
 
@@ -98,12 +103,16 @@ Each item below is independent, for the same reason as "Completed" above.
   corrupted/encrypted entries rely on the downstream
   image-signature/decode check instead, and this substitution has not been
   confirmed with the user (see `docs/Question.md` P4-04).
-- FR-06's three sizing sub-decisions (initial size mode on direction
-  switch, which image is the width/height-fit reference, which axis
-  "custom" sets) are implemented per an interim reading, but that reading
-  itself is unconfirmed — spec-level sign-off is still pending, not just
-  implementation (see `docs/Question.md`'s three FR-06 entries;
-  "implemented" here does not mean "spec agreed").
+- FR-06's remaining two sizing sub-decisions (which image is the
+  width/height-fit reference, which axis "custom" sets) are implemented
+  per an interim reading, but that reading itself is unconfirmed —
+  spec-level sign-off is still pending, not just implementation (see
+  `docs/Question.md`'s two still-open FR-06 entries; "implemented" here
+  does not mean "spec agreed"). The third sub-decision (initial size mode
+  on direction switch) was resolved and confirmed with the user on
+  2026-09-09 (Issue #64, Option A): the initial value is `"fitWidth"` for
+  the default vertical direction, and direction switches do not
+  auto-reset `sizeMode`.
 - Real Safari and real iOS/Android devices were never available — Phase
   6's cross-browser/device checks (P6-01/02/03) used WebKit/Firefox plus
   touch-viewport emulation as a proxy, reported as such, not as

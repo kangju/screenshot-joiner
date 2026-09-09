@@ -63,10 +63,15 @@ const ROTATION_SEQUENCE = [0, 90, 180, 270] as const;
 const nextRotation = (rotation: ImageItem["rotation"]): ImageItem["rotation"] =>
   ROTATION_SEQUENCE[(ROTATION_SEQUENCE.indexOf(rotation) + 1) % ROTATION_SEQUENCE.length];
 
+// FR-06: 縦結合の初期値は幅揃え、横結合の初期値は高さ揃えとする(初期状態の
+// directionは"vertical"なのでsizeModeの初期値は"fitWidth")。方向の切り替え
+// (settings/direction)ではsizeModeを自動変更しない(Option A、
+// docs/Question.md参照): ユーザーが手動で選んだサイズモードを、方向切替の
+// たびに上書きしてしまうリスクを避けるため
 export const createInitialEditorState = (): EditorState => ({
   items: [],
   direction: "vertical",
-  sizeMode: "original",
+  sizeMode: "fitWidth",
   customSize: null,
   gap: 0,
   background: "#ffffff",

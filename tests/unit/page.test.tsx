@@ -1689,6 +1689,11 @@ describe("project scaffold", () => {
       await user.upload(screen.getByLabelText("画像を追加"), files);
       await screen.findByText("second.png");
 
+      // このテストは方向切替(縦→横)自体の配置計算を検証するものであり、
+      // サイズモードは無関係にしたいため、既定(幅を揃える、Issue #64)から
+      // 明示的に「元のサイズ」へ切り替えて自然サイズのまま検証する
+      await user.click(screen.getByRole("button", { name: "元のサイズ" }));
+
       const verticalButton = screen.getByRole("button", { name: "縦に並べる" });
       const horizontalButton = screen.getByRole("button", { name: "横に並べる" });
       expect(verticalButton).toHaveAttribute("aria-pressed", "true");
@@ -1729,7 +1734,7 @@ describe("project scaffold", () => {
     }
   });
 
-  it("defaults to the original size mode and shows the current output dimensions", async () => {
+  it("defaults to the fit-width size mode for the default vertical direction and shows the current output dimensions (FR-06, Issue #64)", async () => {
     const user = userEvent.setup();
     const makeBitmap = (width: number, height: number) =>
       ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
@@ -1756,16 +1761,17 @@ describe("project scaffold", () => {
       await user.upload(screen.getByLabelText("画像を追加"), files);
       await screen.findByText("second.png");
 
-      expect(screen.getByRole("button", { name: "元のサイズ" })).toHaveAttribute("aria-pressed", "true");
-      expect(screen.getByRole("button", { name: "幅を揃える" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "元のサイズ" })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByRole("button", { name: "幅を揃える" })).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByRole("button", { name: "高さを揃える" })).toHaveAttribute("aria-pressed", "false");
       expect(screen.getByRole("button", { name: "サイズを指定" })).toHaveAttribute("aria-pressed", "false");
 
-      // 原寸: 200x150を縦に積み、100x50をそのまま積んだ幅200・高さ200
+      // 幅揃え(既定): 100x50は最初の画像の幅200に合わせて200x100へ拡大される
+      // -> 200x150 + 200x100 を縦に積んで幅200・高さ250
       await waitFor(() =>
-        expect(screen.getByText("出力サイズ: 幅200 × 高さ200px")).toBeInTheDocument(),
+        expect(screen.getByText("出力サイズ: 幅200 × 高さ250px")).toBeInTheDocument(),
       );
-      await waitFor(() => expect(screen.getByText("総画素数: 4万画素")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText("総画素数: 5万画素")).toBeInTheDocument());
     } finally {
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {
@@ -1830,10 +1836,10 @@ describe("project scaffold", () => {
     expect(screen.getByText("並べる方向")).toBeInTheDocument();
     expect(screen.getByText("画像サイズ")).toBeInTheDocument();
 
-    // sizeModeの初期値は"original"(元のサイズ)なので、押下中のボタンは色だけでなく
-    // チェックマークアイコン(SVG)でも判別できる必要がある
-    const pressedButton = screen.getByRole("button", { name: "元のサイズ" });
-    const unpressedButton = screen.getByRole("button", { name: "幅を揃える" });
+    // sizeModeの初期値は"fitWidth"(幅を揃える、Issue #64)なので、押下中のボタンは
+    // 色だけでなくチェックマークアイコン(SVG)でも判別できる必要がある
+    const pressedButton = screen.getByRole("button", { name: "幅を揃える" });
+    const unpressedButton = screen.getByRole("button", { name: "元のサイズ" });
 
     expect(pressedButton).toHaveAttribute("aria-pressed", "true");
     expect(unpressedButton).toHaveAttribute("aria-pressed", "false");
@@ -1887,7 +1893,9 @@ describe("project scaffold", () => {
 
       const noteText = "画像の大きさを変えずに並べます。幅や高さの差は背景色で埋まります";
 
-      // デフォルトは「元のサイズ」が選択されているため、注記は表示されている
+      // 既定は「幅を揃える」(Issue #64)になったため、まず「元のサイズ」を
+      // 明示的に選び、注記が表示される基準状態を作る
+      await user.click(screen.getByRole("button", { name: "元のサイズ" }));
       expect(screen.getByText(noteText)).toHaveClass("sizeModeNote");
       expect(screen.getByText(noteText)).not.toHaveClass("sizeModeNoteHidden");
 
@@ -1902,7 +1910,7 @@ describe("project scaffold", () => {
     },
   );
 
-  it("fits every image to the first image's width when fit-width is selected", async () => {
+  it("switches to the original size mode (no scaling) when explicitly selected, away from the fit-width default", async () => {
     const user = userEvent.setup();
     const makeBitmap = (width: number, height: number) =>
       ({ width, height, close: jest.fn() }) as unknown as ImageBitmap;
@@ -1931,22 +1939,22 @@ describe("project scaffold", () => {
 
       const preview = await screen.findByRole("img", { name: "結合プレビュー" });
       const context = getMockContext(preview as HTMLCanvasElement);
+      // 既定(幅揃え)での初回描画: 200x150 + 200x100(100x50を幅200に拡大)
       await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
 
-      await user.click(screen.getByRole("button", { name: "幅を揃える" }));
+      await user.click(screen.getByRole("button", { name: "元のサイズ" }));
 
-      // 幅揃え: 100x50は最初の画像の幅200に合わせて200x100へ拡大される
-      // -> 200x150 + 200x100 を縦に積んで幅200・高さ250(480以下なので等倍)
+      // 原寸: 200x150と100x50をそのまま縦に積んで幅200・高さ200
       await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(4));
       expect(preview).toHaveAttribute("width", "200");
-      expect(preview).toHaveAttribute("height", "250");
+      expect(preview).toHaveAttribute("height", "200");
       const lastCallIndex = context.drawImage.mock.calls.length - 1;
       expect(context.drawImage.mock.calls[lastCallIndex - 1]).toEqual([firstBitmap, 0, 0, 200, 150]);
-      expect(context.drawImage.mock.calls[lastCallIndex]).toEqual([secondBitmap, 0, 150, 200, 100]);
+      expect(context.drawImage.mock.calls[lastCallIndex]).toEqual([secondBitmap, 0, 150, 100, 50]);
       await waitFor(() =>
-        expect(screen.getByText("出力サイズ: 幅200 × 高さ250px")).toBeInTheDocument(),
+        expect(screen.getByText("出力サイズ: 幅200 × 高さ200px")).toBeInTheDocument(),
       );
-      await waitFor(() => expect(screen.getByText("総画素数: 5万画素")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText("総画素数: 4万画素")).toBeInTheDocument());
     } finally {
       if (originalCreateImageBitmap) {
         Object.defineProperty(globalThis, "createImageBitmap", {

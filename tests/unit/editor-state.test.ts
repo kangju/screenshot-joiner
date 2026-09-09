@@ -24,11 +24,11 @@ const withItems = (items: ImageItem[]) =>
   );
 
 describe("editor state", () => {
-  it("creates the documented initial state", () => {
+  it("creates the documented initial state (FR-06: vertical direction defaults to fitWidth)", () => {
     expect(createInitialEditorState()).toEqual({
       items: [],
       direction: "vertical",
-      sizeMode: "original",
+      sizeMode: "fitWidth",
       customSize: null,
       gap: 0,
       background: "#ffffff",

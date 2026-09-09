@@ -17,6 +17,12 @@ type CropDialogProps = {
 // ダイアログ内で画像を表示する最大の一辺(これより大きい画像は縮小して表示する)
 const DISPLAY_MAX_DIMENSION = 480;
 
+// wrapper(=cropper-canvas)の各辺が最低限これ以上のCSS pxを持つよう保証する。
+// 極端なアスペクト比の画像(例: 幅1px×高さ10000px)を単純な比例縮小のまま
+// 表示すると、短辺がMath.roundで0pxになりクリック・ドラッグ操作が不可能に
+// なる(integration-spikeで実測・確認済み。docs/ARCHITECTURE.md参照)。
+const MIN_WRAPPER_DIMENSION = 24;
+
 // 自由比率のトリミングUI。cropperjsが持つ実際のポインター/ピンチ操作を
 // そのまま利用する。
 //
@@ -28,18 +34,27 @@ const DISPLAY_MAX_DIMENSION = 480;
 // この表示座標は元画像のピクセル座標とは倍率(displayScale)だけ異なるので、
 // 決定時・再オープン時にその倍率で変換する。
 //
+// 通常は縦横で同じ倍率(commonScale)を使い、画像を歪ませずに表示する。
+// ただし極端なアスペクト比では、その軸だけMIN_WRAPPER_DIMENSIONを満たす
+// 個別の倍率(scaleX/scaleY)に切り替える(integration-spikeで確認済み:
+// wrapperをCSSで後から拡大しても、cropperjsの内部<cropper-image>要素は
+// 初期化時点のサイズのまま追従しないため、初期化前の1回の計算で正しい
+// サイズを確定させる必要がある)。そのため、表示座標<->元画像座標の
+// 変換倍率は軸ごとに別の値(displayScaleRef.current.x / .y)になりうる。
+//
 // 狭い画面では.canvasWrapperのmax-width:100%等により、指定した幅がその
 // まま反映されず縮小されることがある。そのため、CSSで指定した意図どおりの
 // 値ではなく、実際にレンダリングされた幅をgetBoundingClientRect()で測定し、
 // そこからdisplayScaleを逆算する(計算値を信用せず、実測値を信用する)。
 type NaturalRect = { x: number; y: number; width: number; height: number };
+type DisplayScale = { x: number; y: number };
 
 export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cropperRef = useRef<Cropper | null>(null);
-  const displayScaleRef = useRef(1);
+  const displayScaleRef = useRef<DisplayScale>({ x: 1, y: 1 });
   // ポインター操作(ドラッグ)だけでは範囲の幅・高さを変更する手段がキーボードに
   // 無い(cropperjsの既定のキーボード操作は移動のみ)ため、元画像のピクセル
   // 座標で直接入力できる数値フィールドを用意し、キーボードだけで完結できる
@@ -138,20 +153,39 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
     // CSSの`max-height: 60vh`と同じ計算式で近似する(この定数はCropDialog.module.cssの
     // .canvasWrapperと合わせる必要がある)
     const availableHeight = Math.min(DISPLAY_MAX_DIMENSION, window.innerHeight * 0.6);
-    const intendedScale =
-      item.bitmap.width === 0 || item.bitmap.height === 0
-        ? 1
-        : Math.min(1, availableWidth / item.bitmap.width, availableHeight / item.bitmap.height);
+    const hasZeroSource = item.bitmap.width === 0 || item.bitmap.height === 0;
+    // 通常はこのcommonScaleを両軸に使い、画像を歪ませずに表示する
+    const commonScale = hasZeroSource
+      ? 1
+      : Math.min(1, availableWidth / item.bitmap.width, availableHeight / item.bitmap.height);
 
-    wrapper.style.width = `${Math.round(item.bitmap.width * intendedScale)}px`;
-    wrapper.style.height = `${Math.round(item.bitmap.height * intendedScale)}px`;
+    // 極端なアスペクト比では、commonScaleのまま丸めるとどちらかの辺が
+    // MIN_WRAPPER_DIMENSION未満(0を含む)になる。該当する軸だけ、その軸単独で
+    // MIN_WRAPPER_DIMENSIONを満たす倍率に切り替える(該当しない軸はcommonScale
+    // のままで無歪み)
+    let intendedScaleX = commonScale;
+    let intendedScaleY = commonScale;
+
+    if (!hasZeroSource) {
+      if (Math.round(item.bitmap.width * commonScale) < MIN_WRAPPER_DIMENSION) {
+        intendedScaleX = MIN_WRAPPER_DIMENSION / item.bitmap.width;
+      }
+
+      if (Math.round(item.bitmap.height * commonScale) < MIN_WRAPPER_DIMENSION) {
+        intendedScaleY = MIN_WRAPPER_DIMENSION / item.bitmap.height;
+      }
+    }
+
+    wrapper.style.width = `${Math.round(item.bitmap.width * intendedScaleX)}px`;
+    wrapper.style.height = `${Math.round(item.bitmap.height * intendedScaleY)}px`;
 
     // 上記の見積もりが何らかの理由で外れていた場合の保険として、指定した
     // 意図どおりの値ではなく実測値からdisplayScaleを求める
-    const measuredWidth = wrapper.getBoundingClientRect().width;
-    const displayScale = item.bitmap.width === 0 || measuredWidth === 0
-      ? intendedScale
-      : measuredWidth / item.bitmap.width;
+    const measuredRect = wrapper.getBoundingClientRect();
+    const displayScale: DisplayScale = {
+      x: item.bitmap.width === 0 || measuredRect.width === 0 ? intendedScaleX : measuredRect.width / item.bitmap.width,
+      y: item.bitmap.height === 0 || measuredRect.height === 0 ? intendedScaleY : measuredRect.height / item.bitmap.height,
+    };
     displayScaleRef.current = displayScale;
 
     canvas.width = item.bitmap.width;
@@ -219,10 +253,10 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
         // 既存のcropメタデータ(元画像のピクセル座標)があれば、表示座標に
         // 変換したうえで前回の選択範囲から編集を再開する
         if (item.crop) {
-          selection.x = item.crop.x * displayScale;
-          selection.y = item.crop.y * displayScale;
-          selection.width = item.crop.width * displayScale;
-          selection.height = item.crop.height * displayScale;
+          selection.x = item.crop.x * displayScale.x;
+          selection.y = item.crop.y * displayScale.y;
+          selection.width = item.crop.width * displayScale.x;
+          selection.height = item.crop.height * displayScale.y;
         }
 
         // ドラッグやキーボード矢印キーでの操作(cropperjs側の内部状態変化)を
@@ -239,20 +273,20 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
           const detail = (event as CustomEvent<{ x: number; y: number; width: number; height: number }>).detail;
 
           setNaturalRect({
-            x: Math.round(detail.x / displayScale),
-            y: Math.round(detail.y / displayScale),
-            width: Math.round(detail.width / displayScale),
-            height: Math.round(detail.height / displayScale),
+            x: Math.round(detail.x / displayScale.x),
+            y: Math.round(detail.y / displayScale.y),
+            width: Math.round(detail.width / displayScale.x),
+            height: Math.round(detail.height / displayScale.y),
           });
         };
 
         // 初期表示は(まだ変更イベントが発火していないため)selectionの現在値を
         // そのまま使ってよい
         setNaturalRect({
-          x: Math.round(selection.x / displayScale),
-          y: Math.round(selection.y / displayScale),
-          width: Math.round(selection.width / displayScale),
-          height: Math.round(selection.height / displayScale),
+          x: Math.round(selection.x / displayScale.x),
+          y: Math.round(selection.y / displayScale.y),
+          width: Math.round(selection.width / displayScale.x),
+          height: Math.round(selection.height / displayScale.y),
         });
         selection.addEventListener("change", syncFromSelection);
         removeSelectionListener = () => selection.removeEventListener("change", syncFromSelection);
@@ -287,7 +321,8 @@ export function CropDialog({ item, onConfirm, onCancel, onReset }: CropDialogPro
     const selection = cropperRef.current?.getCropperSelection();
 
     if (selection) {
-      selection[field] = value * displayScaleRef.current;
+      const axisScale = field === "x" || field === "width" ? displayScaleRef.current.x : displayScaleRef.current.y;
+      selection[field] = value * axisScale;
     }
   };
 

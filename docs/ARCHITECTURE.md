@@ -98,6 +98,7 @@ type EditorState = {
 - Treat Clipboard, Canvas, object URLs, and Worker lifecycle as replaceable adapters.
 - Render preview and final output through the same layout calculation to prevent discrepancies.
 - Perform output size checks before allocating the final Canvas.
+- `CropDialog`'s wrapper→cropperjs display scale is per-axis (`{x, y}`), not a single uniform value: an axis whose proportional size would round below `MIN_WRAPPER_DIMENSION` (24px) gets its own floor scale instead, so extreme-aspect-ratio images (e.g. 1×10000) keep a clickable, draggable selection area. Confirmed via `integration-spike` (2026-09-09, Issue #63) that cropperjs's internal `<cropper-image>` layout is fixed at `new Cropper(...)` time and does not react to a later pure-CSS resize of its container — the correct size must be set before initialization, which the existing effect ordering already does.
 
 ## Static export restrictions
 

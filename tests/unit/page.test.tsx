@@ -1690,8 +1690,10 @@ describe("project scaffold", () => {
       await screen.findByText("second.png");
 
       // このテストは方向切替(縦→横)自体の配置計算を検証するものであり、
-      // サイズモードは無関係にしたいため、既定(幅を揃える、Issue #64)から
-      // 明示的に「元のサイズ」へ切り替えて自然サイズのまま検証する
+      // サイズモードによる拡大縮小は無関係にしたいため、既定(幅を揃える、
+      // Issue #64)から明示的に「元のサイズ」へ切り替え、sizeModeによる
+      // リサイズを行わない状態で検証する(下記の期待値はプレビュー自体の
+      // 縮小表示スケールが乗った値であり、bitmapの自然サイズそのものではない)
       await user.click(screen.getByRole("button", { name: "元のサイズ" }));
 
       const verticalButton = screen.getByRole("button", { name: "縦に並べる" });

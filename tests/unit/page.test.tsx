@@ -1775,6 +1775,485 @@ describe("project scaffold", () => {
     }
   });
 
+  it("does not change the applied custom size when the typed value is below 1px (keeps the last valid value)", async () => {
+    const user = userEvent.setup();
+    const firstBitmap = { width: 200, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const secondBitmap = { width: 200, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(firstBitmap)
+      .mockResolvedValueOnce(secondBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "first"], "first.png", { type: "image/png" }),
+        new File([png, "second"], "second.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("second.png");
+
+      const preview = await screen.findByRole("img", { name: "結合プレビュー" });
+      const context = getMockContext(preview as HTMLCanvasElement);
+      await waitFor(() => expect(context.drawImage).toHaveBeenCalledTimes(2));
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "150");
+      await waitFor(() => expect(preview).toHaveAttribute("width", "150"));
+
+      // min=1未満(0.1/0/-1/空欄)は表示だけ変わっても実際の適用値(=直前の
+      // 有効値150)を保持し続けなければならない。挙動が変わっていないことを
+      // drawImageの呼び出し回数(=再描画が起きていないこと)で確認する
+      const drawCallsBeforeInvalidInput = context.drawImage.mock.calls.length;
+
+      for (const invalidValue of ["0.1", "0", "-1"]) {
+        await user.clear(sizeInput);
+        await user.type(sizeInput, invalidValue);
+      }
+      await user.clear(sizeInput);
+
+      expect(preview).toHaveAttribute("width", "150");
+      expect(context.drawImage.mock.calls.length).toBe(drawCallsBeforeInvalidInput);
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("rejects an extreme aspect-ratio image whose whole layout rounds to 0px even with a valid (>=1) custom size", async () => {
+    const user = userEvent.setup();
+    // 幅10万×高さ1の画像を幅1にfitさせると、高さは1*(1/100000)=0.00001に丸まり
+    // 0pxになる。customSize自体は"1"で有効な値(>=1)であり、入力時点の下限
+    // チェックでは検出できない -> buildOutputCanvas側のレイアウト検証が必要
+    const bitmap = { width: 100000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest.spyOn(HTMLCanvasElement.prototype, "toBlob");
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "thin.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("thin.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "1");
+
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "出力サイズが小さすぎるため保存できません",
+      );
+      expect(toBlobSpy).not.toHaveBeenCalled();
+    } finally {
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("clears the output-size error alert when all images are removed", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "thin.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("thin.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "1");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+      await screen.findByRole("alert");
+
+      await user.click(screen.getByRole("button", { name: "すべて削除" }));
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("clears the output-size error alert when the last remaining image is removed individually (not via 'すべて削除')", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "thin.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("thin.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "1");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+      await screen.findByRole("alert");
+
+      await user.click(screen.getByRole("button", { name: "削除: thin.png" }));
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("saves normally once a custom size that collapsed the layout to 0px is corrected", async () => {
+    const user = userEvent.setup();
+    // 幅10万×高さ1。customSize="1"だと高さが丸めで0pxになり無効だが、
+    // customSize="100000"(=元の幅と同じ)なら高さ1で有効になる
+    const bitmap = { width: 100000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const blob = new Blob(["png-bytes"], { type: "image/png" });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(blob));
+    const createObjectURLMock = jest.fn(() => "blob:mock-url");
+    // jsdomのURLにはcreateObjectURL/revokeObjectURLが元々存在せずjest.spyOnが
+    // 使えないため、Object.definePropertyで追加した上で元の値をfinallyで
+    // 復元する(他テストへ副作用を与えないため)
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURLMock });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: jest.fn() });
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "thin.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("thin.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "1");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+      await screen.findByRole("alert");
+
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "100000");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(toBlobSpy).toHaveBeenCalled();
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    } finally {
+      clickSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      Object.defineProperty(URL, "createObjectURL", {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+      Object.defineProperty(URL, "revokeObjectURL", {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("rejects a custom size that collapses only one image's placement to 0px, even though the overall layout stays positive", async () => {
+    const user = userEvent.setup();
+    // thinBitmap: 幅1万×高さ1。幅2にfitさせると高さが0.0002に丸まり0pxになる。
+    // tallBitmap: 幅100×高さ1000。同じくfitさせると高さ20になり、全体の高さは
+    // 正のまま(=全体寸法だけを見るチェックでは検出できない)。
+    const thinBitmap = { width: 10000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const tallBitmap = { width: 100, height: 1000, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest
+      .fn<Promise<ImageBitmap>, [ImageBitmapSource]>()
+      .mockResolvedValueOnce(thinBitmap)
+      .mockResolvedValueOnce(tallBitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest.spyOn(HTMLCanvasElement.prototype, "toBlob");
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const files = [
+        new File([png, "thin"], "thin.png", { type: "image/png" }),
+        new File([png, "tall"], "tall.png", { type: "image/png" }),
+      ];
+
+      await user.upload(screen.getByLabelText("画像を追加"), files);
+      await screen.findByText("tall.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "2");
+
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "出力サイズが小さすぎるため保存できません",
+      );
+      expect(toBlobSpy).not.toHaveBeenCalled();
+    } finally {
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("clears a stale output-size error once the layout becomes valid, even if the user then cancels the pixel-count warning", async () => {
+    const user = userEvent.setup();
+    // 幅10万×高さ1。customSize="1"だと丸めで無効(alert表示)、
+    // customSize="100000000"だと有効(1px以上)だが100MP警告の対象になる
+    const bitmap = { width: 100000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest.spyOn(HTMLCanvasElement.prototype, "toBlob");
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "thin.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("thin.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "1");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+      await screen.findByRole("alert");
+
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "100000000");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      // レイアウト自体は有効(1px以上)になったので、100MP警告をキャンセル
+      // しても直前の「サイズが小さすぎる」エラー表示は残ってはいけない
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(toBlobSpy).not.toHaveBeenCalled();
+    } finally {
+      confirmSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("shows an error instead of silently doing nothing when canvas.toBlob yields no blob (PNG download)", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(null));
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("画像の生成に失敗しました");
+      expect(clickSpy).not.toHaveBeenCalled();
+    } finally {
+      clickSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("shows an error instead of silently doing nothing when canvas.toBlob yields no blob (JPEG download)", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(null));
+    const clickSpy = jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      await user.click(screen.getByRole("button", { name: "JPEG" }));
+      await user.click(screen.getByRole("button", { name: "JPEGとして保存" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("画像の生成に失敗しました");
+      expect(clickSpy).not.toHaveBeenCalled();
+    } finally {
+      clickSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("shows an error instead of silently doing nothing when canvas.toBlob yields no blob (clipboard copy)", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((callback: BlobCallback) => callback(null));
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "first.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("first.png");
+
+      await user.click(screen.getByRole("button", { name: "PNGとしてコピー" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("画像の生成に失敗しました");
+      expect(copyPngBlobToClipboardMock).not.toHaveBeenCalled();
+    } finally {
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("applies a user-entered gap and background color to the live preview", async () => {
     const user = userEvent.setup();
     const makeBitmap = (width: number, height: number) =>

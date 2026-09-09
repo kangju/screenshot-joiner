@@ -1087,6 +1087,59 @@ describe("project scaffold", () => {
     await waitFor(() => expect(screen.queryByText("ZIPを展開中です")).not.toBeInTheDocument());
   });
 
+  it("clears the ZIP progress indicator immediately when 'すべて削除' is pressed while a ZIP is processing", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    let capturedOnProgress: ((stage: "scanning" | "extracting") => void) | undefined;
+    const cancelMock = jest.fn();
+    const pendingResult = new Promise(() => undefined); // このテストでは解決させない
+    extractZipFileMock.mockImplementation((_buffer: ArrayBuffer, onProgress: typeof capturedOnProgress) => {
+      capturedOnProgress = onProgress;
+      return { result: pendingResult, cancel: cancelMock };
+    });
+
+    try {
+      render(<Home />);
+      // 「すべて削除」は一覧が空だと無効化されるため、既存画像を先に追加する
+      const existingFile = new File([new Uint8Array(pngSignature)], "existing.png", { type: "image/png" });
+      await user.upload(screen.getByLabelText("画像を追加"), [existingFile]);
+      await screen.findByText("existing.png");
+
+      const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", { type: "application/zip" });
+      const list = screen.getByRole("list");
+
+      fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+      await waitFor(() => expect(capturedOnProgress).toBeDefined());
+      act(() => capturedOnProgress?.("extracting"));
+      expect(await screen.findByText("ZIPを展開中です")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "すべて削除" }));
+
+      // Workerのcancel()自体は呼ぶが、その結果を待たずに進捗表示・専用の
+      // キャンセルボタンは即座に消える(ユーザーには「すべて削除」した
+      // 時点でZIP処理も止まったように見えるべきため)
+      expect(cancelMock).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText("ZIPを展開中です")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "キャンセル" })).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("cancels an in-flight ZIP extraction's worker when the editor unmounts (not just suppressing the result)", async () => {
     const cancelMock = jest.fn();
     const pendingResult = new Promise(() => undefined); // never resolves

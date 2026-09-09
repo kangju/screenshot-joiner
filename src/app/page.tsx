@@ -504,6 +504,13 @@ export default function Home() {
     // 止まらないため)。cancel()後、handleAddZip側がawait result解決時に
     // 自前でzipCancelRef.currentをnullへ戻すため、ここでは呼び出すだけでよい
     zipCancelRef.current?.();
+
+    // cancel()の結果が実際に解決してhandleAddZip側が後片付けするのを待つと、
+    // 「すべて削除」を押した直後もZIPの進捗表示・専用キャンセルボタンが
+    // 一瞬(または解決が遅ければしばらく)残ってしまう。ユーザー操作としては
+    // 「すべて削除」で一覧もZIP処理も同時に止まったように見えるべきなので、
+    // ここで即座に消す
+    setZipStatus(null);
   };
 
   const handleDirectionChange = (direction: EditorState["direction"]) => {

@@ -152,6 +152,12 @@ export default function Home() {
   // ZIP展開は1件ずつ直列に処理する。並行処理を許すと、単一の状態である
   // zipStatus(進捗・キャンセル)を複数のZIPが奪い合ってしまうため
   const zipQueueRef = useRef<Promise<void>>(Promise.resolve());
+  // 「すべて削除」より前に開始された取り込み(ファイル/貼り付け/ZIP)が
+  // クリア後にコミットされてしまうのを防ぐための世代カウンタ。handleClearで
+  // 加算し、各取り込みは開始時点(最初のawaitより前)で捕まえた値と、
+  // コミット直前の値を比較する。捕捉タイミングを最初のawait前にしないと、
+  // クリア前にキューへ登録済みの処理が誤って新しい世代として扱われてしまう
+  const clearGenerationRef = useRef(0);
   const [state, dispatch] = useReducer(
     editorReducer,
     undefined,
@@ -166,6 +172,10 @@ export default function Home() {
     if (files.length === 0) {
       return;
     }
+
+    // このバッチが「すべて削除」より前に開始されたことを判定するための世代。
+    // 最初のawaitより前(=呼び出された瞬間)に捕まえる
+    const myGeneration = clearGenerationRef.current;
 
     dispatch({ type: "processing/start" });
 
@@ -199,8 +209,10 @@ export default function Home() {
     // 前のバッチがstateへ反映されるまで待ち、コミット順序を維持する
     await previousCommit;
 
-    // 待機中にアンマウントされていたら、デコード済みビットマップを破棄して終了する
-    if (!mountedRef.current) {
+    // 待機中にアンマウントされていたら、デコード済みビットマップを破棄して終了する。
+    // 「すべて削除」がこのバッチの開始後に実行されていた場合も同様に、
+    // 決着済みのデコード結果を一覧へコミットせず破棄する
+    if (!mountedRef.current || clearGenerationRef.current !== myGeneration) {
       results.forEach((result) => {
         if (result.status === "fulfilled") {
           result.value.close();
@@ -366,9 +378,14 @@ export default function Home() {
   // ドロップされても直列に処理する(zipQueueRef)
   const handleAddZip = useCallback(
     (zipFile: File) => {
+      // 「すべて削除」より前にキューへ登録されたことを判定するための世代。
+      // Worker起動前(キュー待機中)の時点で捕まえる(Worker起動時に取得すると、
+      // クリア前に登録済みの待機ZIPが誤って新しい世代として扱われてしまう)
+      const myGeneration = clearGenerationRef.current;
+      const isStale = () => clearGenerationRef.current !== myGeneration;
       const previousInQueue = zipQueueRef.current;
       const runExtraction = previousInQueue.then(async () => {
-        if (!mountedRef.current) {
+        if (!mountedRef.current || isStale()) {
           return;
         }
 
@@ -383,22 +400,25 @@ export default function Home() {
 
         const buffer = await zipFile.arrayBuffer();
 
-        if (!mountedRef.current) {
+        if (!mountedRef.current || isStale()) {
           return;
         }
 
         const { result, cancel } = extractZipFile(buffer, (stage) => {
-          if (mountedRef.current) {
+          if (mountedRef.current && !isStale()) {
             setZipStatus({ stage, cancel });
           }
         });
         zipCancelRef.current = cancel;
-        setZipStatus({ stage: "scanning", cancel });
+
+        if (!isStale()) {
+          setZipStatus({ stage: "scanning", cancel });
+        }
 
         const outcome = await result;
         zipCancelRef.current = null;
 
-        if (!mountedRef.current) {
+        if (!mountedRef.current || isStale()) {
           return;
         }
 
@@ -473,6 +493,17 @@ export default function Home() {
     ownedBitmapsRef.current.clear();
     dispatch({ type: "items/clear" });
     setOutputError(null);
+
+    // 「すべて削除」より前に開始された取り込み(ファイル/貼り付け/ZIP)が
+    // 後からコミットされて一覧が復活しないよう、世代を進める
+    // (addImages/handleAddZip側で判定に使う)
+    clearGenerationRef.current += 1;
+
+    // 実行中のZIP展開があれば、専用キャンセルボタンと同じ経路でWorkerも
+    // 実際に停止する(世代だけでは、既に投げたpostMessageの処理自体は
+    // 止まらないため)。cancel()後、handleAddZip側がawait result解決時に
+    // 自前でzipCancelRef.currentをnullへ戻すため、ここでは呼び出すだけでよい
+    zipCancelRef.current?.();
   };
 
   const handleDirectionChange = (direction: EditorState["direction"]) => {

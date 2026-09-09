@@ -1106,6 +1106,191 @@ describe("project scaffold", () => {
     expect(cancelMock).toHaveBeenCalledTimes(1);
   });
 
+  it("cancels the in-flight ZIP worker and does not re-add its images after 'すべて削除' while extraction is still running", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    const cancelMock = jest.fn();
+    let resolveResult!: (outcome: unknown) => void;
+    const pendingResult = new Promise((resolve) => {
+      resolveResult = resolve;
+    });
+    extractZipFileMock.mockReturnValue({ result: pendingResult, cancel: cancelMock });
+
+    try {
+      render(<Home />);
+      const existingFile = new File([new Uint8Array(pngSignature)], "existing.png", { type: "image/png" });
+      await user.upload(screen.getByLabelText("画像を追加"), [existingFile]);
+      await screen.findByText("existing.png");
+
+      const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", { type: "application/zip" });
+      const list = screen.getByRole("list");
+
+      fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+      await waitFor(() => expect(extractZipFileMock).toHaveBeenCalledTimes(1));
+
+      await user.click(screen.getByRole("button", { name: "すべて削除" }));
+
+      // 専用キャンセルと同じ経路でWorkerも実際に停止する(単に結果を無視するだけではない)
+      expect(cancelMock).toHaveBeenCalledTimes(1);
+
+      // Workerがキャンセル前に結果を返しても(実運用ではcancelがこの解決を
+      // 起こすが、テストでは明示的にキャンセル結果を返す)、画像は追加されない
+      await act(async () => {
+        resolveResult({ ok: false, reason: "cancelled" });
+      });
+
+      expect(screen.queryByText("existing.png")).not.toBeInTheDocument();
+      expect(screen.getByText("画像一覧・0枚")).toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("does not add a ZIP's images if 'すべて削除' happens while the extracted files are still being decoded", async () => {
+    const user = userEvent.setup();
+    let resolveBitmap!: (bitmap: ImageBitmap) => void;
+    const bitmapPromise = new Promise<ImageBitmap>((resolve) => {
+      resolveBitmap = resolve;
+    });
+    const createImageBitmapMock = jest.fn(() => bitmapPromise);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    extractZipFileMock.mockReturnValue({
+      result: Promise.resolve({
+        ok: true,
+        files: [{ name: "a.png", data: new Uint8Array(pngSignature) }],
+      }),
+      cancel: jest.fn(),
+    });
+
+    try {
+      render(<Home />);
+      // 「すべて削除」は一覧が空だと無効化されるため、ZIP以外の既存画像を
+      // あらかじめ1枚追加しておく。この1枚だけ即座に解決させ、ZIPの分は
+      // 通常どおりbitmapPromiseで止めたままにする(mockImplementationOnceは
+      // 1回消費されると自動的に既定の実装(bitmapPromiseを返す)へ戻る)
+      createImageBitmapMock.mockImplementationOnce(async () => ({
+        width: 10,
+        height: 10,
+        close: jest.fn(),
+      }));
+      const existingFile = new File([new Uint8Array(pngSignature)], "existing.png", { type: "image/png" });
+      await user.upload(screen.getByLabelText("画像を追加"), [existingFile]);
+      await screen.findByText("existing.png");
+
+      const zipFile = new File([new Uint8Array([1, 2, 3])], "photos.zip", { type: "application/zip" });
+      const list = screen.getByRole("list");
+
+      fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+      // ZIP展開自体は完了し(zipStatusは消える)、addImages内のデコードが
+      // まだ未解決の状態を作る
+      await waitFor(() => expect(createImageBitmapMock).toHaveBeenCalledTimes(2));
+
+      await user.click(screen.getByRole("button", { name: "すべて削除" }));
+
+      const bitmap = { width: 10, height: 10, close: jest.fn() } as unknown as ImageBitmap;
+      await act(async () => {
+        resolveBitmap(bitmap);
+      });
+
+      expect(screen.queryByText("a.png")).not.toBeInTheDocument();
+      // クリア後に確定したデコード結果のbitmapも、一覧に取り込まれずcloseされる
+      expect(bitmap.close).toHaveBeenCalledTimes(1);
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
+  it("does not start a queued ZIP's worker if 'すべて削除' happens before its turn arrives", async () => {
+    const user = userEvent.setup();
+    const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    let resolveFirst!: (outcome: unknown) => void;
+    const firstPromise = new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+    const secondResult = {
+      ok: true,
+      files: [{ name: "b.png", data: new Uint8Array(pngSignature) }],
+    };
+    extractZipFileMock
+      .mockReturnValueOnce({ result: firstPromise, cancel: jest.fn() })
+      .mockReturnValueOnce({ result: Promise.resolve(secondResult), cancel: jest.fn() });
+
+    try {
+      render(<Home />);
+      // 「すべて削除」は一覧が空だと無効化されるため、ZIP以外の既存画像を
+      // あらかじめ1枚追加しておく
+      const existingFile = new File([new Uint8Array(pngSignature)], "existing.png", { type: "image/png" });
+      await user.upload(screen.getByLabelText("画像を追加"), [existingFile]);
+      await screen.findByText("existing.png");
+
+      const firstZip = new File([new Uint8Array([1])], "first.zip", { type: "application/zip" });
+      const secondZip = new File([new Uint8Array([2])], "second.zip", { type: "application/zip" });
+      const list = screen.getByRole("list");
+
+      // 2件目(second.zip)は1件目がまだ処理中のため、直列キューで待機する
+      fireEvent.drop(list, { dataTransfer: { files: [firstZip, secondZip] } });
+      await waitFor(() => expect(extractZipFileMock).toHaveBeenCalledTimes(1));
+
+      await user.click(screen.getByRole("button", { name: "すべて削除" }));
+
+      await act(async () => {
+        resolveFirst({ ok: false, reason: "cancelled" });
+        // 1件目の処理完了後、待機していた2件目の順番が回ってくるまで
+        // イベントループを数ティックflushする(File.arrayBuffer()の解決を
+        // 含むため、マイクロタスクだけでなく実タイマーも挟む)
+        for (let i = 0; i < 5; i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      });
+
+      // 2件目はキューに残っていたが、Workerが実際に起動されることはない
+      expect(extractZipFileMock).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText("b.png")).not.toBeInTheDocument();
+    } finally {
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("reports a ZIP extraction failure without adding any images", async () => {
     extractZipFileMock.mockReturnValue({
       result: Promise.resolve({ ok: false, reason: "tooManyFiles" }),

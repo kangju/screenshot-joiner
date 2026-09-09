@@ -79,6 +79,11 @@ lines the way the old single-paragraph list did.
   saving/copying silently; also covers the case where the overall layout
   stays positive but one image's placement rounds to 0px). Detail:
   `docs/tdd-log/`'s 2026-09-09 dated entry.
+- Issue #62 (ZIP-extracted images could reappear after "すべて削除" if the
+  extraction/decode was still in flight; a generation counter now
+  invalidates any pre-clear commit, and the active ZIP worker is now
+  actually cancelled, not just its result ignored). Detail:
+  `docs/tdd-log/`'s 2026-09-09 dated entry.
 
 ## Open residual risks
 

@@ -582,6 +582,11 @@ export default function Home() {
       return null;
     }
 
+    // レイアウト自体は有効と判定できたので、このあと100MP警告を
+    // キャンセルされても直前の「サイズが小さすぎる」エラー表示が
+    // 残らないよう、ここで消しておく
+    setOutputError(null);
+
     // 巨大なcanvasを確保する前に警告し、続行するかどうかをユーザーに確認する
     if (exceedsPixelThreshold({ width: layout.width, height: layout.height })) {
       const proceed = window.confirm(
@@ -592,8 +597,6 @@ export default function Home() {
         return null;
       }
     }
-
-    setOutputError(null);
 
     // ここまでは純粋なサイズ計算のみ。承認された場合にのみ、実際に
     // 変換canvas(クロップ・回転済みの中間canvas)を確保・描画する

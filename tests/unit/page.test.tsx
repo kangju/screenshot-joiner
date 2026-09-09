@@ -2030,6 +2030,58 @@ describe("project scaffold", () => {
     }
   });
 
+  it("clears a stale output-size error once the layout becomes valid, even if the user then cancels the pixel-count warning", async () => {
+    const user = userEvent.setup();
+    // 幅10万×高さ1。customSize="1"だと丸めで無効(alert表示)、
+    // customSize="100000000"だと有効(1px以上)だが100MP警告の対象になる
+    const bitmap = { width: 100000, height: 1, close: jest.fn() } as unknown as ImageBitmap;
+    const createImageBitmapMock = jest.fn(async () => bitmap);
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", {
+      configurable: true,
+      value: createImageBitmapMock,
+    });
+    const toBlobSpy = jest.spyOn(HTMLCanvasElement.prototype, "toBlob");
+    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
+
+    try {
+      render(<Home />);
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const file = new File([png], "thin.png", { type: "image/png" });
+
+      await user.upload(screen.getByLabelText("画像を追加"), [file]);
+      await screen.findByText("thin.png");
+
+      await user.click(screen.getByRole("button", { name: "サイズを指定" }));
+      const sizeInput = screen.getByLabelText("カスタムサイズ(px)");
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "1");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+      await screen.findByRole("alert");
+
+      await user.clear(sizeInput);
+      await user.type(sizeInput, "100000000");
+      await user.click(screen.getByRole("button", { name: "PNGとして保存" }));
+
+      // レイアウト自体は有効(1px以上)になったので、100MP警告をキャンセル
+      // しても直前の「サイズが小さすぎる」エラー表示は残ってはいけない
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(toBlobSpy).not.toHaveBeenCalled();
+    } finally {
+      confirmSpy.mockRestore();
+      toBlobSpy.mockRestore();
+      if (originalCreateImageBitmap) {
+        Object.defineProperty(globalThis, "createImageBitmap", {
+          configurable: true,
+          value: originalCreateImageBitmap,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "createImageBitmap");
+      }
+    }
+  });
+
   it("shows an error instead of silently doing nothing when canvas.toBlob yields no blob (PNG download)", async () => {
     const user = userEvent.setup();
     const bitmap = { width: 100, height: 100, close: jest.fn() } as unknown as ImageBitmap;

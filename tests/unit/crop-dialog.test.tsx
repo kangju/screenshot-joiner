@@ -460,9 +460,17 @@ describe("CropDialog", () => {
     // 切り替えることで、長辺は無歪みのまま短辺だけクリック可能なサイズを
     // 確保する。この2軸独立スケールの挙動を検証する。
 
+    const originalInnerHeightDescriptor = Object.getOwnPropertyDescriptor(window, "innerHeight");
+
     afterEach(() => {
-      // window.innerHeightはjsdomの既定に戻す(他テストへ影響しないように)
       jest.restoreAllMocks();
+
+      // window.innerHeightはObject.definePropertyで上書きしており、
+      // jest.restoreAllMocks()では戻らないため、元のプロパティ記述子を
+      // 明示的に復元する(他テストへ影響を残さないため)
+      if (originalInnerHeightDescriptor) {
+        Object.defineProperty(window, "innerHeight", originalInnerHeightDescriptor);
+      }
     });
 
     it("floors only the degenerate width axis for a very thin (1x10000) image, keeping the height axis proportional", async () => {

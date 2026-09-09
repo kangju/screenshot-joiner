@@ -84,6 +84,11 @@ lines the way the old single-paragraph list did.
   invalidates any pre-clear commit, and the active ZIP worker is now
   actually cancelled, not just its result ignored). Detail:
   `docs/tdd-log/`'s 2026-09-09 dated entry.
+- Issue #63 (an extreme-aspect-ratio image collapsed the crop wrapper's
+  short axis to 0px, making the crop selection unusable; the wrapper's
+  display scale is now per-axis, flooring only the degenerate axis).
+  Detail: `docs/tdd-log/`'s 2026-09-09 dated entry (includes an
+  `integration-spike` result also noted in `docs/ARCHITECTURE.md`).
 
 ## Open residual risks
 

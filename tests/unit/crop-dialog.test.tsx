@@ -88,6 +88,35 @@ const makeItem = (crop: ImageItem["crop"] = null): ImageItem => ({
   targetWidth: null,
 });
 
+const makeExtremeItem = (
+  width: number,
+  height: number,
+  crop: ImageItem["crop"] = null,
+): ImageItem => ({
+  id: "thin",
+  name: "thin.png",
+  source: "file",
+  blob: new Blob(["thin"], { type: "image/png" }),
+  bitmap: { width, height, close: jest.fn() } as unknown as ImageBitmap,
+  originalWidth: width,
+  originalHeight: height,
+  crop,
+  rotation: 0,
+  targetWidth: null,
+});
+
+const rectOf = (width: number, height: number) => ({
+  width,
+  height,
+  top: 0,
+  left: 0,
+  right: width,
+  bottom: height,
+  x: 0,
+  y: 0,
+  toJSON: () => ({}),
+});
+
 beforeEach(() => {
   selectionState.x = 20;
   selectionState.y = 40;
@@ -421,6 +450,117 @@ describe("CropDialog", () => {
     await user.tab({ shift: true });
 
     expect(confirmButton).toHaveFocus();
+  });
+
+  describe("extreme aspect ratios (Issue #63, confirmed via integration-spike against real cropperjs)", () => {
+    // integration-spikeで実測: 1x10000のような極端なアスペクト比では、
+    // 単一の比例縮小(commonScale)のまま丸めると短辺がMath.roundで0pxになり、
+    // ドラッグ操作も数値入力による座標変換も破綻する。短辺だけ
+    // MIN_WRAPPER_DIMENSION(24px)を満たす独立した倍率(scaleX/scaleY)に
+    // 切り替えることで、長辺は無歪みのまま短辺だけクリック可能なサイズを
+    // 確保する。この2軸独立スケールの挙動を検証する。
+
+    afterEach(() => {
+      // window.innerHeightはjsdomの既定に戻す(他テストへ影響しないように)
+      jest.restoreAllMocks();
+    });
+
+    it("floors only the degenerate width axis for a very thin (1x10000) image, keeping the height axis proportional", async () => {
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 640 });
+      // 1回目(availableWidthの見積もり、まだスタイル未設定時点): 480
+      // 2回目(wrapper.style設定後の実測): 24x384(=10000*(384/10000)を丸めた値)
+      jest
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValueOnce(rectOf(480, 320))
+        .mockReturnValueOnce(rectOf(24, 384));
+
+      render(
+        <CropDialog item={makeExtremeItem(1, 10000)} onConfirm={jest.fn()} onCancel={jest.fn()} onReset={jest.fn()} />,
+      );
+      await waitForCropperReady();
+
+      const wrapper = document.querySelector("canvas")?.parentElement as HTMLElement;
+
+      expect(wrapper.style.width).toBe("24px");
+      // 高さはcommonScale(384/10000)のまま、24pxという下限には影響されない
+      expect(wrapper.style.height).toBe("384px");
+    });
+
+    it("converts existing crop metadata to display coordinates using independent per-axis scale, not one shared scale", async () => {
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 640 });
+      jest
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValueOnce(rectOf(480, 320))
+        .mockReturnValueOnce(rectOf(24, 384));
+
+      // 元画像ピクセル座標(1x10000の範囲内): x=0,width=1(幅は1しかありえない)、
+      // y=5000,height=2000
+      render(
+        <CropDialog
+          item={makeExtremeItem(1, 10000, { x: 0, y: 5000, width: 1, height: 2000 })}
+          onConfirm={jest.fn()}
+          onCancel={jest.fn()}
+          onReset={jest.fn()}
+        />,
+      );
+      await waitForCropperReady();
+
+      // displayScale.x = 24/1 = 24、displayScale.y = 384/10000 = 0.0384
+      // (1軸だけの共有スケールだと、この2つの倍率は一致してしまい
+      // 期待値からズレる)
+      expect(selectionState.x).toBeCloseTo(0);
+      expect(selectionState.width).toBeCloseTo(24);
+      expect(selectionState.y).toBeCloseTo(192);
+      expect(selectionState.height).toBeCloseTo(76.8);
+    });
+
+    it("floors only the degenerate height axis for a very wide (10000x1) image, and round-trips keyboard-entered natural pixel values through the correct per-axis scale", async () => {
+      const user = userEvent.setup();
+      const onConfirm = jest.fn();
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 640 });
+      // 幅は480(DISPLAY_MAX_DIMENSIONで頭打ち)、高さは24(下限)
+      jest
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValueOnce(rectOf(480, 320))
+        .mockReturnValueOnce(rectOf(480, 24));
+
+      render(
+        <CropDialog item={makeExtremeItem(10000, 1)} onConfirm={onConfirm} onCancel={jest.fn()} onReset={jest.fn()} />,
+      );
+      await waitForCropperReady();
+
+      const wrapper = document.querySelector("canvas")?.parentElement as HTMLElement;
+
+      expect(wrapper.style.width).toBe("480px");
+      expect(wrapper.style.height).toBe("24px");
+
+      // 高さ1pxの画像なのでyは0固定でなければならない(既定値40は表示座標の
+      // ままだと元画像座標に換算した際に範囲外になり、確定が拒否されてしまう)
+      const yInput = screen.getByLabelText("上から(px)");
+      await user.clear(yInput);
+      await user.type(yInput, "0");
+
+      // displayScale.x = 480/10000 = 0.048、displayScale.y = 24/1 = 24
+      const widthInput = screen.getByLabelText("幅(px)");
+      await user.clear(widthInput);
+      await user.type(widthInput, "5000");
+      // 幅の入力(元画像ピクセル)にはscaleX(0.048)が使われる。scaleY(24)を
+      // 誤用すると120000のようなあり得ない値になってしまう
+      expect(selectionState.width).toBeCloseTo(240);
+
+      const heightInput = screen.getByLabelText("高さ(px)");
+      await user.clear(heightInput);
+      await user.type(heightInput, "1");
+      // 高さの入力にはscaleY(24)が使われる
+      expect(selectionState.height).toBeCloseTo(24);
+
+      await user.click(screen.getByRole("button", { name: "切り抜きを適用" }));
+
+      expect(onConfirm).toHaveBeenCalledWith(
+        "thin",
+        expect.objectContaining({ width: 5000, height: 1 }),
+      );
+    });
   });
 
   it("traps focus inside the dialog: Shift+Tab right after opening (panel itself still focused) wraps to the last element instead of leaking to the background", async () => {

@@ -94,15 +94,28 @@ lines the way the old single-paragraph list did.
   `docs/Question.md` reading with the user — Option A — and changed the
   initial value to `"fitWidth"`, without adding auto-reset on direction
   switch). Detail: `docs/tdd-log/`'s 2026-09-09 dated entry.
+- Issue #65 (a ZIP entry with only the general-purpose encryption bit set —
+  plaintext data, flagged encrypted — was silently accepted, since `fflate`
+  exposes no read-side encryption flag; a real password-protected ZIP also
+  only got a generic "unreadable" message). `src/lib/zip-central-directory.ts`
+  now self-parses the central directory (fail-closed, independent of
+  `fflate`'s own success/failure) to detect it, surfaced as a distinct
+  `"encrypted"` reason. Detail: `docs/tdd-log/`'s 2026-09-09 dated entry
+  (includes an `integration-spike` result also noted in
+  `docs/ARCHITECTURE.md`); `docs/Question.md` P4-04's encryption-detection
+  question is resolved (its CRC-32/corruption-verification question is not,
+  see below).
 
 ## Open residual risks
 
 Each item below is independent, for the same reason as "Completed" above.
 
-- ZIP CRC-32/encryption is not verified by parsing the central directory —
-  corrupted/encrypted entries rely on the downstream
+- ZIP CRC-32 (corruption) verification is not implemented by parsing the
+  central directory — corrupted entries rely on the downstream
   image-signature/decode check instead, and this substitution has not been
-  confirmed with the user (see `docs/Question.md` P4-04).
+  confirmed with the user (see `docs/Question.md` P4-04). Encryption-flag
+  detection, previously bundled with this same residual risk, was resolved
+  by Issue #65 and is no longer part of this item.
 - FR-06's remaining two sizing sub-decisions (which image is the
   width/height-fit reference, which axis "custom" sets) are implemented
   per an interim reading, but that reading itself is unconfirmed —

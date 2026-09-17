@@ -100,7 +100,7 @@ lines the way the old single-paragraph list did.
   only got a generic "unreadable" message). `src/lib/zip-central-directory.ts`
   now self-parses the central directory (fail-closed, independent of
   `fflate`'s own success/failure) to detect it, surfaced as a distinct
-  `"encrypted"` reason. Detail: `docs/tdd-log/`'s 2026-09-09 dated entry
+  `"encrypted"` reason. Detail: `docs/tdd-log/`'s 2026-09-14 dated entry
   (includes an `integration-spike` result also noted in
   `docs/ARCHITECTURE.md`); `docs/Question.md` P4-04's encryption-detection
   question is resolved (its CRC-32/corruption-verification question is not,

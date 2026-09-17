@@ -13,18 +13,25 @@ const bytes = (values: number[]): Uint8Array => new Uint8Array(values);
 // 実測した、実際のzip -Pパスワード付きZIPと同じ状態)
 const setEncryptedConsistently = (zipped: Uint8Array, name: string): void => {
   const view = new DataView(zipped.buffer, zipped.byteOffset, zipped.byteLength);
-  let centralDirectoryOffset = -1;
+  let eocdOffset = -1;
 
-  for (let index = 0; index < zipped.length - 4; index += 1) {
+  for (let index = zipped.length - 4; index >= 0; index -= 1) {
     if (view.getUint32(index, true) === 0x06054b50) {
-      centralDirectoryOffset = view.getUint32(index + 16, true);
+      eocdOffset = index;
       break;
     }
   }
 
+  if (eocdOffset === -1) {
+    throw new Error("EOCD not found in test fixture");
+  }
+
+  const totalEntries = view.getUint16(eocdOffset + 10, true);
+  const centralDirectoryOffset = view.getUint32(eocdOffset + 16, true);
+
   let pos = centralDirectoryOffset;
 
-  for (;;) {
+  for (let entryIndex = 0; entryIndex < totalEntries; entryIndex += 1) {
     const nameLength = view.getUint16(pos + 28, true);
     const extraLength = view.getUint16(pos + 30, true);
     const commentLength = view.getUint16(pos + 32, true);
@@ -39,6 +46,8 @@ const setEncryptedConsistently = (zipped: Uint8Array, name: string): void => {
 
     pos += 46 + nameLength + extraLength + commentLength;
   }
+
+  throw new Error(`entry "${name}" not found in test fixture's central directory`);
 };
 
 describe("extractZipBuffer", () => {

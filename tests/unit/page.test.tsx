@@ -1363,6 +1363,26 @@ describe("project scaffold", () => {
     expect(screen.queryByRole("button", { name: /削除:/ })).not.toBeInTheDocument();
   });
 
+  it("shows a distinct 'password-protected' reason for an encrypted ZIP, without adding any images (Issue #65)", async () => {
+    extractZipFileMock.mockReturnValue({
+      result: Promise.resolve({ ok: false, reason: "encrypted" }),
+      cancel: jest.fn(),
+    });
+
+    render(<Home />);
+    const zipFile = new File([new Uint8Array([1, 2, 3])], "secret.zip", {
+      type: "application/zip",
+    });
+    const list = screen.getByRole("list");
+
+    fireEvent.drop(list, { dataTransfer: { files: [zipFile] } });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("secret.zip");
+    expect(alert).toHaveTextContent("パスワード保護されたZIPです");
+    expect(screen.queryByRole("button", { name: /削除:/ })).not.toBeInTheDocument();
+  });
+
   it("prevents the browser's default file-open behavior while dragging over the image list", () => {
     render(<Home />);
     const list = screen.getByRole("list");

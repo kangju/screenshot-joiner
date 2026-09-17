@@ -8,6 +8,48 @@ const toBuffer = (zipped: Uint8Array): ArrayBuffer =>
 
 const bytes = (values: number[]): Uint8Array => new Uint8Array(values);
 
+// セントラルディレクトリ・ローカルヘッダー双方の汎用目的ビットフラグの
+// bit0(暗号化)を一貫して立てる(integration-spike, 2026-09-09, Issue #65で
+// 実測した、実際のzip -Pパスワード付きZIPと同じ状態)
+const setEncryptedConsistently = (zipped: Uint8Array, name: string): void => {
+  const view = new DataView(zipped.buffer, zipped.byteOffset, zipped.byteLength);
+  let eocdOffset = -1;
+
+  for (let index = zipped.length - 4; index >= 0; index -= 1) {
+    if (view.getUint32(index, true) === 0x06054b50) {
+      eocdOffset = index;
+      break;
+    }
+  }
+
+  if (eocdOffset === -1) {
+    throw new Error("EOCD not found in test fixture");
+  }
+
+  const totalEntries = view.getUint16(eocdOffset + 10, true);
+  const centralDirectoryOffset = view.getUint32(eocdOffset + 16, true);
+
+  let pos = centralDirectoryOffset;
+
+  for (let entryIndex = 0; entryIndex < totalEntries; entryIndex += 1) {
+    const nameLength = view.getUint16(pos + 28, true);
+    const extraLength = view.getUint16(pos + 30, true);
+    const commentLength = view.getUint16(pos + 32, true);
+    const entryName = Buffer.from(zipped.slice(pos + 46, pos + 46 + nameLength)).toString("utf8");
+
+    if (entryName === name) {
+      const localHeaderOffset = view.getUint32(pos + 42, true);
+      view.setUint16(pos + 8, view.getUint16(pos + 8, true) | 0x1, true);
+      view.setUint16(localHeaderOffset + 6, view.getUint16(localHeaderOffset + 6, true) | 0x1, true);
+      return;
+    }
+
+    pos += 46 + nameLength + extraLength + commentLength;
+  }
+
+  throw new Error(`entry "${name}" not found in test fixture's central directory`);
+};
+
 describe("extractZipBuffer", () => {
   it("extracts only supported images, sorted in natural filename order, ignoring folders and metadata", () => {
     const zipped = zipSync({
@@ -119,5 +161,67 @@ describe("extractZipBuffer", () => {
     const result = extractZipBuffer(toBuffer(bytes([0x00, 0x01, 0x02, 0x03])));
 
     expect(result).toEqual({ ok: false, reason: "unreadable" });
+  });
+
+  it("rejects an archive containing an encrypted entry, without ever reaching the scanning/extracting stages", () => {
+    const zipped = zipSync({
+      "a.png": bytes([1, 2, 3]),
+      "secret.png": bytes([4, 5, 6, 7]),
+    });
+    setEncryptedConsistently(zipped, "secret.png");
+    const stages: string[] = [];
+
+    const result = extractZipBuffer(toBuffer(zipped), (stage) => stages.push(stage));
+
+    expect(result).toEqual({ ok: false, reason: "encrypted" });
+    // 暗号化検出はfflateでのスキャンより前に行われるため、進捗イベントは
+    // 一切発火しない(重い処理の前に安価な検査で拒否する)
+    expect(stages).toEqual([]);
+  });
+
+  it("rejects an archive that is both nested and encrypted with the encrypted reason (encryption check runs first)", () => {
+    const innerZip = zipSync({ "a.png": bytes([1]) });
+    const zipped = zipSync({
+      "inner.zip": innerZip,
+      "secret.png": bytes([1, 2, 3]),
+    });
+    setEncryptedConsistently(zipped, "secret.png");
+
+    const result = extractZipBuffer(toBuffer(zipped));
+
+    expect(result).toEqual({ ok: false, reason: "encrypted" });
+  });
+
+  it("rejects an archive with an encrypted non-image file, even though only supported images are normally extracted", () => {
+    const zipped = zipSync({
+      "photo.png": bytes([1, 2, 3]),
+      "notes.txt": bytes([4, 5, 6]),
+    });
+    setEncryptedConsistently(zipped, "notes.txt");
+
+    const result = extractZipBuffer(toBuffer(zipped));
+
+    expect(result).toEqual({ ok: false, reason: "encrypted" });
+  });
+
+  it("rejects an archive whose encrypted entry would otherwise have exceeded the file-count limit, with the encrypted reason", () => {
+    const files: Record<string, Uint8Array> = { "secret.png": bytes([1, 2, 3]) };
+    for (let index = 0; index < DEFAULT_ZIP_LIMITS.maxFileCount; index += 1) {
+      files[`img${index}.png`] = bytes([index % 256]);
+    }
+    const zipped = zipSync(files);
+    setEncryptedConsistently(zipped, "secret.png");
+
+    const result = extractZipBuffer(toBuffer(zipped));
+
+    expect(result).toEqual({ ok: false, reason: "encrypted" });
+  });
+
+  it("accepts a normal archive that merely contains a file with 'encrypted' nowhere in its name (no false positive)", () => {
+    const zipped = zipSync({ "a.png": bytes([1, 2, 3]) });
+
+    const result = extractZipBuffer(toBuffer(zipped));
+
+    expect(result.ok).toBe(true);
   });
 });

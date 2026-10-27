@@ -53,11 +53,13 @@ const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
   webp: "image/webp",
 };
 
-// ZIP展開失敗時にユーザーへ表示する理由(暗号化・破損・非対応形式は
-// まとめてunreadableとして扱う。詳細はdocs/Question.md参照)
+// ZIP展開失敗時にユーザーへ表示する理由。暗号化はセントラルディレクトリの
+// 自前パースで検出し専用の理由を表示する(Issue #65)。破損・非対応形式は
+// 引き続きまとめてunreadableとして扱う(詳細はdocs/Question.md参照)
 const ZIP_FAILURE_MESSAGE: Record<ZipExtractFailureReason, string> = {
   unreadable: "展開できませんでした",
   nested: "ZIP内にZIPが含まれています",
+  encrypted: "パスワード保護されたZIPです",
   tooManyFiles: "画像の件数が上限を超えています",
   fileTooLarge: "含まれる画像が大きすぎます",
   totalTooLarge: "展開後の合計サイズが大きすぎます",
